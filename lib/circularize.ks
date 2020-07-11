@@ -1,4 +1,5 @@
 // circularize the current orbit to the target periapsis
+// TODO: reduce throttle towards end of burn to get more precise periapsis
 print "initializing circularization program".
 
 // calculate the velocity we should have for a circular orbit at the apoapsis height

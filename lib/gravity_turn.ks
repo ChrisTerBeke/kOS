@@ -12,6 +12,7 @@ print "initializing gravity turn program".
 
 until ship:apoapsis > target_apoapsis {
     // TODO: implement max Q throttling
+    // TODO: reduce throttle towards end of burn to get more precise apoapsis
     set speed to ship:velocity:surface:mag.
     if speed > start_turn_at_speed {
         set speed_inc to (speed - start_turn_at_speed) / turn_speed_step.
