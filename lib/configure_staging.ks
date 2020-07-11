@@ -1,17 +1,16 @@
-// auto staging logic
-declare local parameter max_stage is 0.
+// staging logic
+declare local parameter stop_at_stage is 0.
 
-// separate states until given max stage
-when maxThrust = 0 and stage:number < max_stage then {
+// auto stage
+when maxThrust = 0 and stage:liquidfuel < 0.1 then {
     print "stage separation".
     stage.
     wait 1.
-    preserve.
+    return stage:number > stop_at_stage.
 }
 
-// separate solid rocket boosters
-// TODO: fix this
-// when stage:solidfuel < 1 and stage:nextDecoupler:name = "radialDecoupler1-2" then {
-//     print "booster separation".
-//     stage.
-// }
+// drop solid rocket boosters (once)
+when stage:solidfuel < 0.1 then {
+    print "srb separation".
+    stage.
+}

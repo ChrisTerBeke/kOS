@@ -17,7 +17,7 @@ runpath("lib/configure_staging", 5).
 runpath("lib/countdown", 3).
 runpath("lib/launch").
 runpath("lib/gravity_turn").
+stage. // deploy the protective shroud and launch abort tower
 runpath("lib/circularize").
-
-// keep the script running to prevent loss of control
-wait 1000.
+panels on.
+lights on.
