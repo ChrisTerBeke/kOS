@@ -9,6 +9,8 @@ set apoapsisV to sqrt(ship:body:mu * ((2 / (ship:body:radius + apoapsis)) - (1 /
 set deltaV to (targetOrbitalV - apoapsisV).
 set timeToBurn to deltaV / maxDeltaV.
 
+print "calculated circularization burn: " + timeToBurn + " seconds".
+
 // perform the burn
 rcs on.
 lock steering to ship:prograde.
