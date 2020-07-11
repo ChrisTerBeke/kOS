@@ -21,5 +21,6 @@ wait 10.
 stage. // deploy the protective shroud and launch abort tower
 wait 10.
 runpath("lib/circularize").
+wait 10.
 panels on.
 lights on.

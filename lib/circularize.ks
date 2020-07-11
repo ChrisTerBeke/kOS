@@ -19,5 +19,6 @@ wait until eta:apoapsis < (timeToBurn / 2).
 lock throttle to 1.
 wait until ship:velocity:orbit:mag >= targetOrbitalV.
 lock throttle to 0.
+rcs off.
 
 print "finished circularizing orbit, shutting down engines".
