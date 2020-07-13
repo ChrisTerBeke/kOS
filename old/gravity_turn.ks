@@ -1,7 +1,7 @@
 // generic gravity turn script
 declare local parameter target_apoapsis is 140000.
-declare local parameter start_turn_at_speed is 100.
-declare local parameter turn_speed_step is 50.
+declare local parameter start_turn_at_speed is 150.
+declare local parameter turn_speed_step is 80.
 declare local parameter max_pitch is 90.
 declare local parameter pitch_step is 5.
 declare local parameter final_pitch is 10.
@@ -11,8 +11,10 @@ declare local parameter direction is 90.
 print "initializing gravity turn program".
 
 until ship:apoapsis > target_apoapsis {
+
     // TODO: implement max Q throttling
-    // TODO: reduce throttle towards end of burn to get more precise apoapsis
+
+    // adjust pitch to follow prograde vector closely
     set speed to ship:velocity:surface:mag.
     if speed > start_turn_at_speed {
         set speed_inc to (speed - start_turn_at_speed) / turn_speed_step.
@@ -20,6 +22,13 @@ until ship:apoapsis > target_apoapsis {
         lock steering to heading(direction, pitch, roll).
         print "adjusted pitch to " + pitch.
     }
+
+    // reduce throttle towards end of turn
+    if ship:apoapsis > target_apoapsis - 1000 {
+        lock throttle to 0.5.
+    }
+
+    // prevent FPS drop
     wait 1.
 }
 
