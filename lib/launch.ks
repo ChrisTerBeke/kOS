@@ -1,7 +1,6 @@
 // generic launch script
 parameter target_apoapsis is 140000.
 parameter target_inclination is 0.
-parameter stage_count is 5.
 parameter stage_until is 0.
 parameter roll is 270.
 
@@ -314,7 +313,7 @@ until launch_complete {
     }
 
     // staging detection
-    if launch_mode > 0 {
+    if launch_mode > 0 and stage:number >= stage_until {
 
         // auto-staging triggers
         if launch_mode = 3 or launch_mode = 8 and not staging_in_progress {
@@ -350,7 +349,7 @@ until launch_complete {
         }
 
         // new stage has no thrust, we need to stage one more time
-        // otherwise we ignite the engines (if we're not causting)
+        // otherwise we ignite the engines (if we're not coasting)
         if ship:maxthrust < 0.01 {
             set stage_at_time to time:seconds + stage_separation_delay.
         } else {
