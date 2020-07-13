@@ -6,11 +6,7 @@ parameter roll is 270.
 
 // configure global mission parameters
 set turn_start_altitude to 1500.
-set booster_separation_delay to 2.
-set stage_separation_delay to 3.
-set throttle_pid to 0.004.
-set throttle_pid_delta to 0.004.
-set limit_to_terminal_velocity to false.
+set stage_separation_delay to 2.
 set orbit_max_error_percentage to 5.
 set steeringManager:rollpid:kp to 0.
 set steeringManager:rollpid:ki to 0.
@@ -48,7 +44,6 @@ set next_node to false.
 set should_stage to false.
 set staging_in_progress to false.
 set stage_at_time to time:seconds.
-set staging_engine_ignore_list to list().
 
 // configure for launch
 checkLaunchClamps().
