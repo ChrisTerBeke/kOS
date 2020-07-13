@@ -3,7 +3,5 @@ deletepath("1:/lib").
 copypath("0:/lib", "1:/lib").
 
 // run the launch program
-runpath("lib/launch", 140000, 0, 5, 270).
-stage. // deploy fairings and launch escape system
+runpath("lib/launch", 140000, 0, 4, 270).
 lights on.
-panels on.

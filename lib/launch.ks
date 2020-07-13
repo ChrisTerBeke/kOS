@@ -1,17 +1,19 @@
 // generic launch script
-parameter target_apoapsis is 140000.
-parameter target_inclination is 0.
-parameter stage_until is 0.
-parameter roll is 270.
+parameter target_apoapsis.
+parameter target_inclination.
+parameter stage_until.
+parameter roll.
 
 // configure global mission parameters
 set turn_start_altitude to 1500.
 set stage_separation_delay to 2.
 set orbit_max_error_percentage to 5.
+set countdown_from to 5.
+set launch_abort_mode to 999.
+
+// TODO: figure this out
 set steeringManager:rollpid:kp to 0.
 set steeringManager:rollpid:ki to 0.
-set countdown_from to 12.
-set launch_abort_mode to 999.
 
 // calculated parameters
 set launch_location to ship:geoposition.
@@ -33,10 +35,7 @@ set launch_mode to 0.
 set launch_twr to 0.
 set turn_end_altitude to 0.
 set turn_exponent to 0.
-set countdown_thrust_reached to false.
 set countdown_ignition_started to false.
-set countdown_hold to false.
-set ignition_time to time:seconds.
 set broke_30_seconds_to_apoapsis to false.
 set apoapsis_boost_burn to false.
 set node_delta_velocity to 0.
@@ -54,12 +53,6 @@ rcs off.
 lock throttle to throttle_to.
 lock steering to steer_to.
 
-// configure fairing separation at 95% atmosphere
-when altitude > (ship:body:atm:height * 0.95) then {
-    separateFairings().
-    printToLog("Fairing separation.").
-}
-
 // configure abort detection
 on abort {
     set launch_mode to launch_abort_mode.
@@ -71,49 +64,25 @@ until launch_complete {
     // countdown program
     if launch_mode = 0 {
 
-        print "Launch in " + mission_elapsed_time.
-
-        // hold countdown as long as we're not at 95% thrust
-        // TODO: do not perform this check if 1st stage only has solid fuel
-        if not countdown_thrust_reached {
-            set engine_info to getActiveEngineInfo().
-            if engine_info[0] < 0.95 * engine_info[1] {
-                set countdown_hold to true.
-                printToLog("Holding until 95% thrust.").
-            } else {
-                set countdown_thrust_reached to true.
-                set countdown_hold to false.
-            }
-        }
-
         // main engine ignition at T-3.
         if mission_elapsed_time >= -3 and not countdown_ignition_started {
-            doStage().
-            set ignition_time to time:seconds.
-            set throttle_to to (time:seconds - ignition_time) / 2.
+            set throttle_to to 1.
+            doStage(). // start engines
             set countdown_ignition_started to true.
             printToLog("Main engine ignition sequence started.").
         }
 
-        if mission_elapsed_time >= 0 and not countdown_hold {
-            set throttle_to to 1.
+        if mission_elapsed_time >= 0 {
             doStage(). // release launch clamps
             set launch_time to time:seconds.
             lock mission_elapsed_time to time:seconds - launch_time.
             goToNextLaunchMode().
             printToLog("Liftoff!").
         }
-
-        if mission_elapsed_time >= 2 and countdown_hold {
-            printToLog("Aborting launch due to countdown hold.").
-            set launch_mode to launch_abort_mode.
-            // TODO: shut down engines etc.
-        }
     }
 
     // prepare for vertical ascent
     if launch_mode = 1 {
-        wait 0.
         set engine_info to getActiveEngineInfo().
         set launch_twr to engine_info[1] / (ship:mass * body:mu / (altitude + body:radius) ^ 2).
         set turn_end_altitude to 0.128 * ship:body:atm:height * launch_twr + 0.5 * ship:body:atm:height.
@@ -123,6 +92,7 @@ until launch_complete {
     }
 
     // vertical ascent program
+    // TODO: roll program
     if launch_mode = 2 {
         if altitude > turn_start_altitude {
             set steer_to to heading(90, 90, roll).
@@ -132,52 +102,48 @@ until launch_complete {
     }
 
     // gravity turn program
+    // TODO: gradual turn start
+    // TODO: configurable turn end angle
     if launch_mode = 3 {
 
-        // steer to prograde while staging for smooth separation
-        if staging_in_progress {
-            set ascent_heading to ship:prograde.
+        // calculate gravity turn desired pitch
+        set trajectory_pitch to max(90 - (((altitude - turn_start_altitude) / (turn_end_altitude - turn_start_altitude)) ^ turn_exponent * 90), 0).
+        set steer_pitch to trajectory_pitch.
+
+        // keep time to apoapsis above 30 seconds during ascent once above 30 seconds
+        if broke_30_seconds_to_apoapsis and eta:apoapsis < 30 {
+            set steer_pitch to steer_pitch + (30 - eta:apoapsis).
+        } else if eta:apoapsis > 30 and not broke_30_seconds_to_apoapsis {
+            set broke_30_seconds_to_apoapsis to true.
+        }
+
+        // steer towards the target inclination
+        if abs(ship:orbit:inclination - abs(target_inclination)) > 2 {
+            set steer_heading to launch_azimuth.
         } else {
-
-            // calculate gravity turn desired pitch
-            set trajectory_pitch to max(90 - (((altitude - turn_start_altitude) / (turn_end_altitude - turn_start_altitude)) ^ turn_exponent * 90), 0).
-            set steer_pitch to trajectory_pitch.
-
-            // keep time to apoapsis above 30 seconds during ascent once above 30 seconds
-            if broke_30_seconds_to_apoapsis and eta:apoapsis < 30 {
-                set steer_pitch to steer_pitch + (30 - eta:apoapsis).
-            } else if eta:apoapsis > 30 and not broke_30_seconds_to_apoapsis {
-                set broke_30_seconds_to_apoapsis to true.
-            }
-
-            // steer towards the target inclination
-            if abs(ship:orbit:inclination - abs(target_inclination)) > 2 {
-                set steer_heading to launch_azimuth.
-            } else {
-                if target_inclination >= 0 {
-                    if vAng(vxcl(ship:up:vector, ship:facing:vector), ship:north:vector) <= 90 {
-                        set steer_heading to (90 - target_inclination) - 2 * (abs(target_inclination) - ship:orbit:inclination).
-                    } else {
-                        set steer_heading to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
-                    }
-                } else if target_inclination < 0 {
+            if target_inclination >= 0 {
+                if vAng(vxcl(ship:up:vector, ship:facing:vector), ship:north:vector) <= 90 {
+                    set steer_heading to (90 - target_inclination) - 2 * (abs(target_inclination) - ship:orbit:inclination).
+                } else {
                     set steer_heading to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
                 }
+            } else if target_inclination < 0 {
+                set steer_heading to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
             }
+        }
 
-            set ascent_heading to heading(steer_heading, steer_pitch).
+        set ascent_heading to heading(steer_heading, steer_pitch, roll).
 
-            // don't pitch too far from prograde while under high aerodynamic pressure
-            if ship:q > 0 {
-                set angle_limit to max(3, min(90, 5 * ln(0.9 / ship:q))).
-            } else {
-                set angle_limit to 90.
-            }
-            set angle_to_prograde to vAng(ship:srfprograde:vector, ascent_heading:vector).
-            if angle_to_prograde > angle_limit {
-                set ascent_heading_limited to (angle_limit / angle_to_prograde * (ascent_heading:vector:normalized - ship:srfPrograde:vector:normalized)) + ship:srfprograde:vector:normalized.
-                set ascent_heading to ascent_heading_limited:direction.
-            }
+        // don't pitch too far from prograde while under high aerodynamic pressure
+        if ship:q > 0 {
+            set angle_limit to max(3, min(90, 5 * ln(0.9 / ship:q))).
+        } else {
+            set angle_limit to 90.
+        }
+        set angle_to_prograde to vAng(ship:srfprograde:vector, ascent_heading:vector).
+        if angle_to_prograde > angle_limit {
+            set ascent_heading_limited to (angle_limit / angle_to_prograde * (ascent_heading:vector:normalized - ship:srfPrograde:vector:normalized)) + ship:srfprograde:vector:normalized.
+            set ascent_heading to ascent_heading_limited:direction.
         }
 
         set steer_to to ascent_heading.
@@ -201,7 +167,7 @@ until launch_complete {
         // we're done here
         if altitude > ship:body:atm:height {
             goToNextLaunchMode().
-            printToLog("Reached edge of atmosphere. Now coasting.").
+            printToLog("Reached edge of atmosphere.").
         }
 
         // raise our apoapsis if it fell below our target apoapsis (due to atmospheric drag)
@@ -220,26 +186,28 @@ until launch_complete {
         printToLog("Calculating circularization maneuver.").
         set periapsis_radius to periapsis + ship:body:radius.
         set apoapsis_radius to apoapsis + ship:body:radius.
-        set node_delta_velocity to sqrt(ship:body:mu / (apoapsis_radius)) * (1 - sqrt(2 * periapsis_radius / (periapsis_radius / apoapsis_radius))).
+        set node_delta_velocity to sqrt(ship:body:mu / apoapsis_radius) * (1 - sqrt(2 * periapsis_radius / (periapsis_radius + apoapsis_radius))).
         set next_node to node(time:seconds + eta:apoapsis, 0, 0, node_delta_velocity).
         add next_node.
         goToNextLaunchMode().
         printToLog("Circularization maneuver created.").
     }
 
-    // drop stage if fuel is nearly depleted
+    // drop stage if fuel is nearly depleted and wait until staging is done
     if launch_mode = 6 {
         set throttle_to to 0.
-        set stage_delta_velocity to getDeltaVelocityForstage().
-        if stage_delta_velocity >= 0 {
-            if (stage_delta_velocity < node_delta_velocity* 0.5 and node_delta_velocity > 200) or stage_delta_velocity < 100 {
-                set should_stage to true.
-                printToLog("Current stage low on fuel. Stage separation configured.").
-            }
-        }
-        if not staging_in_progress {
-            goToNextLaunchMode().
-        }
+        // FIXME: getDeltaVelocityForStage() returns 0 for some stages
+        // if not staging_in_progress {
+        //     set stage_delta_velocity to getDeltaVelocityForStage().
+        //     if (stage_delta_velocity < (node_delta_velocity * 0.5) and node_delta_velocity > 200) or stage_delta_velocity < 100 {
+        //         set should_stage to true.
+        //         printToLog("Current stage low on fuel. Stage separation configured.").
+        //     }
+        // }
+        // if not (should_stage or staging_in_progress) {
+        //     goToNextLaunchMode().
+        // }
+        goToNextLaunchMode().
     }
 
     // steer to circularization node
@@ -257,7 +225,6 @@ until launch_complete {
             // TODO: support reaching stable orbit after missing circularization at apoapsis instead of aborting
             printToLog("Failed to steer to circularization maneuver. Aborting mission.").
             set launch_mode to launch_abort_mode.
-            abort on.
         }
     }
 
@@ -265,28 +232,30 @@ until launch_complete {
     if launch_mode = 8 {
 
         // overshot apoapsis but stable orbit reached, stop burning to prevent worse final orbit
-        if apoapsis > (1 + orbit_max_error_percentage / 100) * target_apoapsis and periapsis > ship:body:atm:height {
+        if apoapsis > ((1 + orbit_max_error_percentage / 100) * target_apoapsis) and periapsis > ship:body:atm:height {
             set throttle_to to 0.
             goToNextLaunchMode().
+            printToLog("Overshot target apoapsis but reached stable orbit nonetheless.").
         }
 
-        lock burn_time_remaining to next_node:deltav:mag / max(availablethrust / ship:mass, 0.001).
-        if burn_time_remaining > 2 {
-            set throttle_to to 1.
-            set steer_to to next_node.
-        } else {
-            unlock steering.
-            sas on. // prevent spinning at end of circularization burn
-            printToLog("Circularization burn nearly complete. Fine-tuning remainder.").
-            wait 0.001.
-            set time_to_complete_burn to burn_time_remaining - 0.1.
-            set burn_end_time to time:seconds + time_to_complete_burn.
-            wait until time:seconds > burn_end_time.
-            set throttle_to to 0.
-            unlock burn_time_remaining.
-            remove next_node.
-            goToNextLaunchMode().
-            printToLog("Circularization burn complete.").
+        // perform burn if we're closer than 1/2 from the total burn time from it
+        lock burn_time_remaining to next_node:deltav:mag / max(ship:availablethrust / ship:mass, 0.001).
+        if next_node:eta <= (burn_time_remaining / 2) {
+            if burn_time_remaining > 2 {
+                set throttle_to to 1.
+                set steer_to to next_node.
+            } else {
+                unlock steering.
+                sas on. // prevent spinning at end of circularization burn
+                set time_to_complete_burn to burn_time_remaining - 0.1.
+                set burn_end_time to time:seconds + time_to_complete_burn.
+                wait until time:seconds > burn_end_time.
+                set throttle_to to 0.
+                unlock burn_time_remaining.
+                remove next_node.
+                goToNextLaunchMode().
+                printToLog("Circularization burn complete.").
+            }
         }
     }
 
@@ -303,27 +272,22 @@ until launch_complete {
         unlock steering.
         remove next_node.
         sas on.
+        abort on.
         printToLog("Launch aborted.").
         break.
     }
 
     // staging detection
-    if launch_mode > 0 and stage:number >= stage_until {
+    if launch_mode > 0 and stage:number > stage_until {
 
         // auto-staging triggers
-        if launch_mode = 3 or launch_mode = 8 and not staging_in_progress {
+        if (launch_mode = 3 or launch_mode = 8) and not staging_in_progress {
             list engines in engine_list.
             for engine in engine_list {
-
-                // we still have thrust, this is just booster separation
-                if engine:flamout and maxThrust >= 0.1 {
+                if engine:flameout {
                     set stage_at_time to time:seconds + stage_separation_delay.
                     set staging_in_progress to true.
-                    break.
-                } else if engine:flamout and maxThrust < 0.1 {
-                    set throttle_to to 0.
-                    set stage_at_time to time:seconds + stage_separation_delay.
-                    set staging_in_progress to true.
+                    printToLog("Detected engine flameout. Staging required.").
                     break.
                 }
             }
@@ -331,30 +295,28 @@ until launch_complete {
 
         // staging was configured in any launch mode above
         if should_stage {
-            set throttle_to to 0.
-            set stage_at_time to time:seconds + stage_separation_delay.
             set should_stage to false.
+            set stage_at_time to time:seconds + stage_separation_delay.
             set staging_in_progress to true.
+            printToLog("Stage separation requested.").
         }
 
         // execute staging
         if time:seconds >= stage_at_time and staging_in_progress {
             doStage().
             set staging_in_progress to false.
+            printToLog("Stage separation confirmed.").
         }
 
         // new stage has no thrust, we need to stage one more time
         // otherwise we ignite the engines (if we're not coasting)
-        if ship:maxthrust < 0.01 {
+        if not staging_in_progress and ship:maxthrust < 0.01 {
             set stage_at_time to time:seconds + stage_separation_delay.
-        } else {
-            if launch_mode = 3 or launch_mode = 8 {
-                set throttle_to to 1.
-            }
-            set staging_in_progress to false.
+            set staging_in_progress to true.
+            printToLog("No thrust detected on current stage. Staging required.").
+        } else if launch_mode = 3 or launch_mode = 8 {
+            set throttle_to to 1.
         }
-
-        // TODO: support ullage staging with separation boosters
     }
 
     // auto-abort detection scenarios
@@ -370,11 +332,11 @@ until launch_complete {
 
     if ship:parts:length < num_parts and stage:ready {
         set launch_mode to launch_abort_mode.
-        printToLog("Detecting vehicle breaking up. Aborting missin.").
+        printToLog("Detecting vehicle breaking up. Aborting mission.").
     }
 
     // prevent KSP from locking up
-    wait 0.01.
+    wait 0.05.
 }
 
 // check if all launch clamps are on the same stage
@@ -419,24 +381,25 @@ function getActiveEngineInfo {
 }
 
 // get the remaining delta velocity for the curren stage
-function getDeltaVelocityForstage {
+function getDeltaVelocityForStage {
 
     // unable to calculate DeltaV when there are complex fuel lines in place
     for part in ship:parts {
-        if part: modules:contains("CModeFuelLine") {
+        if part:modules:contains("CModeFuelLine") {
             return -1.
         }
     }
 
     // calculate the total fuel mass (stage:resources does not work as it returns fuel from non-active stages as well)
-    local fuel_mass is stage:liguidfuel * 0.005 + stage:oxidier * 0.005 + stage:solidfuel * 0.0075.
+    local resources is stage:resourceslex.
+    local fuel_mass is (resources["liquidfuel"]:amount * 0.005) + (resources["oxidizer"]:amount * 0.005) + (resources["solidfuel"]:amount * 0.0075).
 
     // calculate total available thrust and flow rate
     list engines in engine_list.
     local total_thrust is 0.
     local mass_flow_rate is 0.
     local average_specific_impulse is 0.
-    
+
     for engine in engine_list {
         if engine:ignition {
             set total_thrust to total_thrust + engine:availablethrust.
@@ -450,8 +413,8 @@ function getDeltaVelocityForstage {
         set average_specific_impulse to total_thrust / mass_flow_rate.
     }
 
-    // deltaV calculation as Isp*g*ln(m0/m1).
-    return average_specific_impulse * 9.81 * ln(ship:mass / (ship:mass - fuel_mass)).
+    local delta_velocity is average_specific_impulse * constant:g0 * ln(ship:mass / (ship:mass - fuel_mass)).
+    return delta_velocity.
 }
 
 // switch to the next launch mode in the program
@@ -462,19 +425,12 @@ function goToNextLaunchMode {
 // print text to the mission log
 function printToLog {
     local parameter text.
-    local line is "T" + round(mission_elapsed_time, 2) + ": " + text.
-    log line to launch_log.txt.
+    local line is "T+" + round(mission_elapsed_time, 2) + ": " + text.
     print line.
 }
 
 // go to the next stage
 function doStage {
     stage.
-    set num_parts to ship:parts:length.
-}
-
-// seprate the fairings (currently on action group 8)
-function separateFairings {
-    toggle ag8.
     set num_parts to ship:parts:length.
 }
