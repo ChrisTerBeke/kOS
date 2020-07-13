@@ -161,6 +161,7 @@ until launch_complete {
     }
 
     // coast to edge of atmosphere
+    // TODO: drop fairings when out of atmosphere (auto-detect fairing parts and launch escape system?)
     if launch_mode = 4 {
         set steer_to to ship:srfprograde.
 
