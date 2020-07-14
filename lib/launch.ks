@@ -1,22 +1,22 @@
 // generic launch script
 
 // mission parameters
-parameter target_apoapsis.
-parameter target_inclination.
-parameter stage_until.
-parameter roll.
+parameter TARGET_ALTITUDE.
+parameter TARGET_INCLINATION.
+parameter STAGE_UNTIL.
+parameter ROLL.
 
 // global mission constants
 set TURN_START_ALTITUDE to 1500.
+set TURN_END_PITCH_DEGREES to 10.
 set STAGE_SEPARATION_DELAY to 2.
-set ORBIT_MAX_ERROR_PERCENTAGE to 5.
 set COUNTDOWN_FROM to 5.
 set LAUNCH_LOCATION to ship:geoposition.
-set INERTIAL_AZIMUTH to arcSin(max(min(cos(target_inclination) / cos(LAUNCH_LOCATION:lat), 1), -1)).
-set TARGET_ORBITAL_SPEED to sqrt(ship:body:mu / (target_apoapsis + ship:body:radius)).
+set INERTIAL_AZIMUTH to arcSin(max(min(cos(TARGET_INCLINATION) / cos(LAUNCH_LOCATION:lat), 1), -1)).
+set TARGET_ORBITAL_SPEED to sqrt(ship:body:mu * ((2 / (ship:body:radius + TARGET_ALTITUDE)) - (1 / (ship:body:radius + TARGET_ALTITUDE)))).
 set ROTATIONAL_VELOCITY_X to TARGET_ORBITAL_SPEED * sin(INERTIAL_AZIMUTH) - (6.2832 * ship:body:radius / ship:body:rotationperiod).
-set ROTATIONAL_VELOCTY_Y to TARGET_ORBITAL_SPEED * cos(INERTIAL_AZIMUTH).
-set LAUNCH_AZIMUTH to arctan(ROTATIONAL_VELOCITY_X / ROTATIONAL_VELOCTY_Y).
+set ROTATIONAL_VELOCITY_Y to TARGET_ORBITAL_SPEED * cos(INERTIAL_AZIMUTH).
+set LAUNCH_AZIMUTH to arctan(ROTATIONAL_VELOCITY_X / ROTATIONAL_VELOCITY_Y).
 
 // launch mode constants
 set LAUNCH_MODE_PRE_LAUNCH to -1.
@@ -25,17 +25,14 @@ set LAUNCH_MODE_LIFTOFF to 1.
 set LAUNCH_MODE_VERTICAL_ASCENT to 2.
 set LAUNCH_MODE_GRAVITY_TURN to 3.
 set LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE to 4.
-set LAUNCH_MODE_SETUP_CIRCULARIZATION_BURN to 5.
-set LAUNCH_MODE_STEER_TO_CIRCULARIZATION_BURN to 6.
-set LAUNCH_MODE_EXECUTE_CIRCULARIZATION_BURN to 7.
-set LAUNCH_MODE_COMPLETED to 8.
+set LAUNCH_MODE_CIRCULARIZATION_BURN to 5.
+set LAUNCH_MODE_COMPLETED to 6.
 SET LAUNCH_MODE_ABORT to 999.
 
 // global control variables
 set num_parts to ship:parts:length.
 set throttle_to to 0.
-set steer_to to heading(90, 90, roll).
-set steer_heading to LAUNCH_AZIMUTH.
+set steer_to to heading(90, 90, ROLL).
 
 // global mission variables
 set launch_time to time:seconds + COUNTDOWN_FROM.
@@ -54,12 +51,6 @@ set countdown_ignition_started to false.
 // gravity turn variables
 set turn_end_altitude to 0.
 set turn_exponent to 0.
-set broke_30_seconds_to_apoapsis to false.
-set apoapsis_boost_burn to false.
-
-// circularization burn variables
-set node_delta_velocity to 0.
-set next_node to false.
 
 // TODO: figure this out so we can make roll program work
 set steeringManager:rollpid:kp to 0.
@@ -97,7 +88,7 @@ until launch_complete {
             printToLog("Main engine ignition sequence started.").
         }
 
-        // lift-ff at T-0
+        // lift-off at T-0
         if mission_elapsed_time >= 0 {
             doStage(). // release launch clamps
             set launch_time to time:seconds.
@@ -109,9 +100,8 @@ until launch_complete {
 
     // prepare for vertical ascent
     if launch_mode = LAUNCH_MODE_LIFTOFF {
-        set engine_info to getActiveEngineInfo().
-        set launch_twr to engine_info[1] / (ship:mass * body:mu / (altitude + body:radius) ^ 2).
-        set turn_end_altitude to 0.128 * ship:body:atm:height * launch_twr + 0.5 * ship:body:atm:height.
+        set launch_twr to getAvailableThrustForCurrentStage() / (ship:mass * ship:body:mu / (altitude + ship:body:radius) ^ 2).
+        set turn_end_altitude to (0.128 * ship:body:atm:height * launch_twr) + (0.5 * ship:body:atm:height).
         set turn_exponent to max(1 / (2.5 * launch_twr - 1.7), 0.25).
         goToNextLaunchMode().
         printToLog("Initiating vertical ascent program.").
@@ -121,65 +111,54 @@ until launch_complete {
     // TODO: roll program
     if launch_mode = LAUNCH_MODE_VERTICAL_ASCENT {
         if altitude > TURN_START_ALTITUDE {
-            set steer_to to heading(90, 90, roll).
+            set steer_to to heading(90, 90, ROLL).
             goToNextLaunchMode().
             printToLog("Initiating gravity turn program.").
         }
     }
 
     // gravity turn program
-    // TODO: gradual turn start
-    // TODO: configurable turn end angle
     // TODO: throttling around max Q
     if launch_mode = LAUNCH_MODE_GRAVITY_TURN {
 
-        // calculate gravity turn desired pitch
-        set trajectory_pitch to max(90 - (((altitude - TURN_START_ALTITUDE) / (turn_end_altitude - TURN_START_ALTITUDE)) ^ turn_exponent * 90), 0).
-        set steer_pitch to trajectory_pitch.
+        // calculate pitch
+        set steer_to_pitch to max(90 - (((altitude - TURN_START_ALTITUDE) / (turn_end_altitude - TURN_START_ALTITUDE)) ^ turn_exponent * 90), TURN_END_PITCH_DEGREES).
 
-        // keep time to apoapsis above 30 seconds during ascent once above 30 seconds
-        if broke_30_seconds_to_apoapsis and eta:apoapsis < 30 {
-            set steer_pitch to steer_pitch + (30 - eta:apoapsis).
-        } else if eta:apoapsis > 30 and not broke_30_seconds_to_apoapsis {
-            set broke_30_seconds_to_apoapsis to true.
-        }
-
-        // steer towards the target inclination
-        if abs(ship:orbit:inclination - abs(target_inclination)) > 2 {
-            set steer_heading to LAUNCH_AZIMUTH.
+        // calculate heading
+        if abs(ship:orbit:inclination - abs(TARGET_INCLINATION)) > 2 {
+            set steer_to_direction to LAUNCH_AZIMUTH.
+        } else if TARGET_INCLINATION >= 0 and vAng(vxcl(ship:up:vector, ship:facing:vector), ship:north:vector) <= 90{
+            set steer_to_direction to (90 - TARGET_INCLINATION) - 2 * (abs(TARGET_INCLINATION) - ship:orbit:inclination).
         } else {
-            if target_inclination >= 0 {
-                if vAng(vxcl(ship:up:vector, ship:facing:vector), ship:north:vector) <= 90 {
-                    set steer_heading to (90 - target_inclination) - 2 * (abs(target_inclination) - ship:orbit:inclination).
-                } else {
-                    set steer_heading to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
-                }
-            } else if target_inclination < 0 {
-                set steer_heading to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
-            }
+            set steer_to_direction to (90 - TARGET_INCLINATION) + 2 * (abs(TARGET_INCLINATION) - ship:orbit:inclination).
         }
+        set tmp_heading to heading(steer_to_direction, steer_to_pitch, ROLL).
 
-        set ascent_heading to heading(steer_heading, steer_pitch, roll).
-
-        // don't pitch too far from prograde while under high aerodynamic pressure
+        // limit angle of attack depending on aerodynamic pressure
         if ship:q > 0 {
             set angle_limit to max(3, min(90, 5 * ln(0.9 / ship:q))).
         } else {
             set angle_limit to 90.
         }
-        set angle_to_prograde to vAng(ship:srfprograde:vector, ascent_heading:vector).
+
+        // adjust heading depending on AoA limit
+        set angle_to_prograde to vAng(ship:srfprograde:vector, tmp_heading:vector).
         if angle_to_prograde > angle_limit {
-            set ascent_heading_limited to (angle_limit / angle_to_prograde * (ascent_heading:vector:normalized - ship:srfPrograde:vector:normalized)) + ship:srfprograde:vector:normalized.
-            set ascent_heading to ascent_heading_limited:direction.
+            set ascent_heading_limited to (angle_limit / angle_to_prograde * (tmp_heading:vector:normalized - ship:srfPrograde:vector:normalized)) + ship:srfprograde:vector:normalized.
+            set tmp_heading to ascent_heading_limited:direction.
         }
 
-        set steer_to to ascent_heading.
+        // steer to the calculated direction, pich and roll
+        set steer_to to tmp_heading.
+
+        // reduce throttle when nearing target apoapsis so we can fine-tune better
+        if (TARGET_ALTITUDE - apoapsis) < 2000 {
+            set throttle_to to 0.2.
+        }
 
         // gravity turn end conditions
-        if apoapsis > target_apoapsis {
+        if apoapsis >= TARGET_ALTITUDE {
             set throttle_to to 0.
-            set trajectory_pitch to 0.
-            set steer_pitch to 0.
             goToNextLaunchMode().
             printToLog("Reached target apoapsis. Coasting to edge of atmosphere.").
         }
@@ -187,83 +166,33 @@ until launch_complete {
 
     // coast to edge of atmosphere
     // TODO: drop fairings when out of atmosphere (auto-detect fairing parts and launch escape system?)
+    // TODO: re-raise apoapsis if it fell due to atmospheric drag
+    // TODO: drop stage if low on fuel
     if launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE {
         set steer_to to ship:srfprograde.
-
-        // we're done here
         if altitude > ship:body:atm:height {
             goToNextLaunchMode().
             printToLog("Reached edge of atmosphere.").
         }
-
-        // raise our apoapsis if it fell below our target apoapsis (due to atmospheric drag)
-        if apoapsis < (1 - ORBIT_MAX_ERROR_PERCENTAGE / 100) * target_apoapsis and not apoapsis_boost_burn {
-            set throttle_to to 0.1.
-            printToLog("Apoapsis dropped below target. Starting correction burn.").
-        } else if apoapsis > target_apoapsis and apoapsis_boost_burn {
-            set throttle_to to 0.
-            printToLog("Target apoapsis reached. Stopping correction burn.").
-        }
     }
 
-    // set up circularization node
-    if launch_mode = LAUNCH_MODE_SETUP_CIRCULARIZATION_BURN {
-        set throttle_to to 0.
-        printToLog("Calculating circularization maneuver.").
-        set periapsis_radius to periapsis + ship:body:radius.
-        set apoapsis_radius to apoapsis + ship:body:radius.
-        set node_delta_velocity to sqrt(ship:body:mu / apoapsis_radius) * (1 - sqrt(2 * periapsis_radius / (periapsis_radius + apoapsis_radius))).
-        set next_node to node(time:seconds + eta:apoapsis, 0, 0, node_delta_velocity).
-        add next_node.
-        goToNextLaunchMode().
-        printToLog("Circularization maneuver created.").
-    }
-
-    // steer to circularization node
-    // TODO: support reaching stable orbit after missing circularization at apoapsis instead of aborting
-    if launch_mode = LAUNCH_MODE_STEER_TO_CIRCULARIZATION_BURN {
-        set throttle_to to 0.
-        printToLog("Steering to circularization maneuver").
-        set steer_to to next_node.
-        set steer_error_x to next_node:burnvector:normalized:x - facing:vector:normalized:x.
-        set steer_error_y to next_node:burnvector:normalized:y - facing:vector:normalized:y.
-        set steer_error_z to next_node:burnvector:normalized:z - facing:vector:normalized:z.
-        set steer_error_total to sqrt(steer_error_x ^ 2 + steer_error_y ^ 2 + steer_error_z ^ 2).
-        if steer_error_total > 0.1 {
-            goToNextLaunchMode().
-        } else {
-            printToLog("Failed to steer to circularization maneuver. Aborting mission.").
-            set launch_mode to LAUNCH_MODE_ABORT.
-        }
-    }
-
-    // execute circularization node
-    if launch_mode = LAUNCH_MODE_EXECUTE_CIRCULARIZATION_BURN {
-
-        // overshot apoapsis but stable orbit reached, stop burning to prevent worse final orbit
-        if apoapsis > ((1 + ORBIT_MAX_ERROR_PERCENTAGE / 100) * target_apoapsis) and periapsis > ship:body:atm:height {
+    // circularization burn
+    if launch_mode = LAUNCH_MODE_CIRCULARIZATION_BURN {
+        set steer_to to ship:prograde.
+        set burn_time_remaining to abs(TARGET_ORBITAL_SPEED - ship:velocity:orbit:mag) / max((ship:availablethrust / ship:mass), 0.001).
+        if burn_time_remaining < 0.1 {
+            // schedule end of burn and cut engines
+            set burn_end_time to time:seconds + burn_time_remaining.
+            wait until time:seconds > burn_end_time.
             set throttle_to to 0.
             goToNextLaunchMode().
-            printToLog("Overshot target apoapsis but reached stable orbit nonetheless.").
-        }
-
-        // perform burn if we're closer than 1/2 from the total burn time from it
-        lock burn_time_remaining to next_node:deltav:mag / max(ship:availablethrust / ship:mass, 0.001).
-        if next_node:eta <= (burn_time_remaining / 2) {
+            printToLog("Circularization burn complete.").
+        } else if burn_time_remaining < 1 {
+            // gradually reduce throttle to increase accuracy
+            set throttle_to to max(burn_time_remaining, 0.1).
+        } else if eta:apoapsis <= (burn_time_remaining / 2) {
+            // full throttle 50% before and 50% after apoapsis
             set throttle_to to 1.
-            set steer_to to next_node.
-
-            // finalize burn
-            if burn_time_remaining < 0.1 {
-                unlock steering.
-                sas on.
-                set burn_end_time to time:seconds + burn_time_remaining.
-                wait until time:seconds > burn_end_time.
-                set throttle_to to 0.
-                remove next_node.
-                goToNextLaunchMode().
-                printToLog("Circularization burn complete.").
-            }
         }
     }
 
@@ -278,7 +207,6 @@ until launch_complete {
         set throttle_to to 0.
         set ship:control:neutralize to true.
         unlock steering.
-        remove next_node.
         sas on.
         abort on.
         printToLog("Launch program aborted.").
@@ -286,10 +214,10 @@ until launch_complete {
     }
 
     // staging detection
-    if launch_mode > LAUNCH_MODE_COUNTDOWN and stage:number > stage_until {
+    if launch_mode > LAUNCH_MODE_COUNTDOWN and stage:number > STAGE_UNTIL {
 
         // auto-staging triggers
-        if (launch_mode = LAUNCH_MODE_GRAVITY_TURN or launch_mode = LAUNCH_MODE_EXECUTE_CIRCULARIZATION_BURN) and not staging_in_progress {
+        if (launch_mode = LAUNCH_MODE_GRAVITY_TURN or launch_mode = LAUNCH_MODE_CIRCULARIZATION_BURN) and not staging_in_progress {
             list engines in engine_list.
             for engine in engine_list {
                 if engine:flameout {
@@ -330,7 +258,7 @@ until launch_complete {
         printToLog("Detected loss of control. Aborting mission.").
     }
 
-    if launch_mode > LAUNCH_MODE_LIFTOFF and launch_mode < LAUNCH_MODE_SETUP_CIRCULARIZATION_BURN and verticalSpeed < -1.0 {
+    if launch_mode > LAUNCH_MODE_LIFTOFF and launch_mode < LAUNCH_MODE_CIRCULARIZATION_BURN and verticalSpeed < -1.0 {
         set launch_mode to LAUNCH_MODE_ABORT.
         printToLog("Detected lack of vertical velocity. Aborting mission.").
     }
@@ -360,66 +288,16 @@ function checkLaunchClamps {
     }
 }
 
-// get current thrust, max thrust, avg ISP and max DOT
-function getActiveEngineInfo {
+// get the available thrust of all engines on the curren stage
+function getAvailableThrustForCurrentStage {
     list engines in engine_list.
-    local current_thrust is 0.
-    local max_thrust is 0.
-    local max_flow_rate is 0.
-    local average_specific_impulse is 0.
-
+    local available_thrust is 0.
     for engine in engine_list {
         if engine:ignition {
-            set max_thrust to max_thrust + engine:availablethrust.
-            set current_thrust to current_thrust + engine:thrust.
-            if not engine:isp = 0 {
-                set max_flow_rate to max_flow_rate + current_thrust / engine:isp.
-            }
+            set available_thrust to available_thrust + engine:availablethrust.
         }
     }
-
-    if max_flow_rate > 0 {
-        set average_specific_impulse to current_thrust / max_flow_rate.
-    }
-
-    return list(current_thrust, max_thrust, average_specific_impulse, max_flow_rate).
-}
-
-// get the remaining delta velocity for the curren stage
-function getDeltaVelocityForStage {
-
-    // unable to calculate DeltaV when there are complex fuel lines in place
-    for part in ship:parts {
-        if part:modules:contains("CModeFuelLine") {
-            return -1.
-        }
-    }
-
-    // calculate the total fuel mass (stage:resources does not work as it returns fuel from non-active stages as well)
-    local resources is stage:resourceslex.
-    local fuel_mass is (resources["liquidfuel"]:amount * 0.005) + (resources["oxidizer"]:amount * 0.005) + (resources["solidfuel"]:amount * 0.0075).
-
-    // calculate total available thrust and flow rate
-    list engines in engine_list.
-    local total_thrust is 0.
-    local mass_flow_rate is 0.
-    local average_specific_impulse is 0.
-
-    for engine in engine_list {
-        if engine:ignition {
-            set total_thrust to total_thrust + engine:availablethrust.
-            if engine:isp <> 0 {
-                set mass_flow_rate to mass_flow_rate + (engine:availablethrust / engine:isp).
-            }
-        }
-    }
-
-    if mass_flow_rate <> 0 {
-        set average_specific_impulse to total_thrust / mass_flow_rate.
-    }
-
-    local delta_velocity is average_specific_impulse * constant:g0 * ln(ship:mass / (ship:mass - fuel_mass)).
-    return delta_velocity.
+    return available_thrust.
 }
 
 // switch to the next launch mode in the program
