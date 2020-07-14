@@ -1,70 +1,95 @@
 // generic launch script
+
+// mission parameters
 parameter target_apoapsis.
 parameter target_inclination.
 parameter stage_until.
 parameter roll.
 
-// configure global mission parameters
-set turn_start_altitude to 1500.
-set stage_separation_delay to 2.
-set orbit_max_error_percentage to 5.
-set countdown_from to 5.
-set launch_abort_mode to 999.
+// global mission constants
+set TURN_START_ALTITUDE to 1500.
+set STAGE_SEPARATION_DELAY to 2.
+set ORBIT_MAX_ERROR_PERCENTAGE to 5.
+set COUNTDOWN_FROM to 5.
+set LAUNCH_LOCATION to ship:geoposition.
+set INERTIAL_AZIMUTH to arcSin(max(min(cos(target_inclination) / cos(LAUNCH_LOCATION:lat), 1), -1)).
+set TARGET_ORBITAL_SPEED to sqrt(ship:body:mu / (target_apoapsis + ship:body:radius)).
+set ROTATIONAL_VELOCITY_X to TARGET_ORBITAL_SPEED * sin(INERTIAL_AZIMUTH) - (6.2832 * ship:body:radius / ship:body:rotationperiod).
+set ROTATIONAL_VELOCTY_Y to TARGET_ORBITAL_SPEED * cos(INERTIAL_AZIMUTH).
+set LAUNCH_AZIMUTH to arctan(ROTATIONAL_VELOCITY_X / ROTATIONAL_VELOCTY_Y).
 
-// TODO: figure this out
-set steeringManager:rollpid:kp to 0.
-set steeringManager:rollpid:ki to 0.
+// launch mode constants
+set LAUNCH_MODE_PRE_LAUNCH to -1.
+set LAUNCH_MODE_COUNTDOWN to 0.
+set LAUNCH_MODE_LIFTOFF to 1.
+set LAUNCH_MODE_VERTICAL_ASCENT to 2.
+set LAUNCH_MODE_GRAVITY_TURN to 3.
+set LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE to 4.
+set LAUNCH_MODE_SETUP_CIRCULARIZATION_BURN to 5.
+set LAUNCH_MODE_STEER_TO_CIRCULARIZATION_BURN to 6.
+set LAUNCH_MODE_EXECUTE_CIRCULARIZATION_BURN to 7.
+set LAUNCH_MODE_COMPLETED to 8.
+SET LAUNCH_MODE_ABORT to 999.
 
-// calculated parameters
-set launch_location to ship:geoposition.
-set inertial_azimuth to arcSin(max(min(cos(target_inclination) / cos(launch_location:lat), 1), -1)).
-set target_orbit_speed to sqrt(ship:body:mu / (target_apoapsis + ship:body:radius)).
-set rotate_velocity_x to target_orbit_speed * sin(inertial_azimuth) - (6.2832 * ship:body:radius / ship:body:rotationperiod).
-set rotate_velocity_y to target_orbit_speed * cos(inertial_azimuth).
-set launch_azimuth to arctan(rotate_velocity_x / rotate_velocity_y).
-
-// parameters (re)calculated during flight
+// global control variables
 set num_parts to ship:parts:length.
-set launch_time to time:seconds + countdown_from.
-lock mission_elapsed_time to time:seconds - launch_time.
-set steer_to to heading(90, 90, roll).
-set steer_heading to launch_azimuth.
 set throttle_to to 0.
+set steer_to to heading(90, 90, roll).
+set steer_heading to LAUNCH_AZIMUTH.
+
+// global mission variables
+set launch_time to time:seconds + COUNTDOWN_FROM.
+set launch_mode to LAUNCH_MODE_PRE_LAUNCH.
 set launch_complete to false.
-set launch_mode to 0.
-set launch_twr to 0.
-set turn_end_altitude to 0.
-set turn_exponent to 0.
-set countdown_ignition_started to false.
-set broke_30_seconds_to_apoapsis to false.
-set apoapsis_boost_burn to false.
-set node_delta_velocity to 0.
-set next_node to false.
+lock mission_elapsed_time to time:seconds - launch_time.
+
+// global staging variables
 set should_stage to false.
 set staging_in_progress to false.
 set stage_at_time to time:seconds.
 
-// configure for launch
-checkLaunchClamps().
-set ship:control:pilotmainthrottle to 0.
-set config:ipu to 500.
-sas off.
-rcs off.
-lock throttle to throttle_to.
-lock steering to steer_to.
+// countdown variables
+set countdown_ignition_started to false.
 
-// configure abort detection
+// gravity turn variables
+set turn_end_altitude to 0.
+set turn_exponent to 0.
+set broke_30_seconds_to_apoapsis to false.
+set apoapsis_boost_burn to false.
+
+// circularization burn variables
+set node_delta_velocity to 0.
+set next_node to false.
+
+// TODO: figure this out so we can make roll program work
+set steeringManager:rollpid:kp to 0.
+set steeringManager:rollpid:ki to 0.
+
+// detect manual abort
 on abort {
-    set launch_mode to launch_abort_mode.
+    set launch_mode to LAUNCH_MODE_ABORT.
 }
 
-// execute launch program
+// main launch sequence loop
 until launch_complete {
 
-    // countdown program
-    if launch_mode = 0 {
+    // pre-launch sequence
+    if launch_mode = LAUNCH_MODE_PRE_LAUNCH {
+        checkLaunchClamps().
+        set ship:control:pilotmainthrottle to 0.
+        set config:ipu to 500.
+        sas off.
+        rcs off.
+        lock throttle to throttle_to.
+        lock steering to steer_to.
+        goToNextLaunchMode().
+        printToLog("Pre-launch checklist complete.").
+    }
 
-        // main engine ignition at T-3.
+    // countdown program
+    if launch_mode = LAUNCH_MODE_COUNTDOWN {
+
+        // main engine ignition at T-3
         if mission_elapsed_time >= -3 and not countdown_ignition_started {
             set throttle_to to 1.
             doStage(). // start engines
@@ -72,6 +97,7 @@ until launch_complete {
             printToLog("Main engine ignition sequence started.").
         }
 
+        // lift-ff at T-0
         if mission_elapsed_time >= 0 {
             doStage(). // release launch clamps
             set launch_time to time:seconds.
@@ -82,7 +108,7 @@ until launch_complete {
     }
 
     // prepare for vertical ascent
-    if launch_mode = 1 {
+    if launch_mode = LAUNCH_MODE_LIFTOFF {
         set engine_info to getActiveEngineInfo().
         set launch_twr to engine_info[1] / (ship:mass * body:mu / (altitude + body:radius) ^ 2).
         set turn_end_altitude to 0.128 * ship:body:atm:height * launch_twr + 0.5 * ship:body:atm:height.
@@ -93,8 +119,8 @@ until launch_complete {
 
     // vertical ascent program
     // TODO: roll program
-    if launch_mode = 2 {
-        if altitude > turn_start_altitude {
+    if launch_mode = LAUNCH_MODE_VERTICAL_ASCENT {
+        if altitude > TURN_START_ALTITUDE {
             set steer_to to heading(90, 90, roll).
             goToNextLaunchMode().
             printToLog("Initiating gravity turn program.").
@@ -104,10 +130,11 @@ until launch_complete {
     // gravity turn program
     // TODO: gradual turn start
     // TODO: configurable turn end angle
-    if launch_mode = 3 {
+    // TODO: throttling around max Q
+    if launch_mode = LAUNCH_MODE_GRAVITY_TURN {
 
         // calculate gravity turn desired pitch
-        set trajectory_pitch to max(90 - (((altitude - turn_start_altitude) / (turn_end_altitude - turn_start_altitude)) ^ turn_exponent * 90), 0).
+        set trajectory_pitch to max(90 - (((altitude - TURN_START_ALTITUDE) / (turn_end_altitude - TURN_START_ALTITUDE)) ^ turn_exponent * 90), 0).
         set steer_pitch to trajectory_pitch.
 
         // keep time to apoapsis above 30 seconds during ascent once above 30 seconds
@@ -119,7 +146,7 @@ until launch_complete {
 
         // steer towards the target inclination
         if abs(ship:orbit:inclination - abs(target_inclination)) > 2 {
-            set steer_heading to launch_azimuth.
+            set steer_heading to LAUNCH_AZIMUTH.
         } else {
             if target_inclination >= 0 {
                 if vAng(vxcl(ship:up:vector, ship:facing:vector), ship:north:vector) <= 90 {
@@ -148,8 +175,6 @@ until launch_complete {
 
         set steer_to to ascent_heading.
 
-        // TODO: throttling around max Q
-
         // gravity turn end conditions
         if apoapsis > target_apoapsis {
             set throttle_to to 0.
@@ -162,7 +187,7 @@ until launch_complete {
 
     // coast to edge of atmosphere
     // TODO: drop fairings when out of atmosphere (auto-detect fairing parts and launch escape system?)
-    if launch_mode = 4 {
+    if launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE {
         set steer_to to ship:srfprograde.
 
         // we're done here
@@ -172,7 +197,7 @@ until launch_complete {
         }
 
         // raise our apoapsis if it fell below our target apoapsis (due to atmospheric drag)
-        if apoapsis < (1 - orbit_max_error_percentage / 100) * target_apoapsis and not apoapsis_boost_burn {
+        if apoapsis < (1 - ORBIT_MAX_ERROR_PERCENTAGE / 100) * target_apoapsis and not apoapsis_boost_burn {
             set throttle_to to 0.1.
             printToLog("Apoapsis dropped below target. Starting correction burn.").
         } else if apoapsis > target_apoapsis and apoapsis_boost_burn {
@@ -182,7 +207,7 @@ until launch_complete {
     }
 
     // set up circularization node
-    if launch_mode = 5 {
+    if launch_mode = LAUNCH_MODE_SETUP_CIRCULARIZATION_BURN {
         set throttle_to to 0.
         printToLog("Calculating circularization maneuver.").
         set periapsis_radius to periapsis + ship:body:radius.
@@ -194,25 +219,9 @@ until launch_complete {
         printToLog("Circularization maneuver created.").
     }
 
-    // drop stage if fuel is nearly depleted and wait until staging is done
-    if launch_mode = 6 {
-        set throttle_to to 0.
-        // FIXME: getDeltaVelocityForStage() returns 0 for some stages
-        // if not staging_in_progress {
-        //     set stage_delta_velocity to getDeltaVelocityForStage().
-        //     if (stage_delta_velocity < (node_delta_velocity * 0.5) and node_delta_velocity > 200) or stage_delta_velocity < 100 {
-        //         set should_stage to true.
-        //         printToLog("Current stage low on fuel. Stage separation configured.").
-        //     }
-        // }
-        // if not (should_stage or staging_in_progress) {
-        //     goToNextLaunchMode().
-        // }
-        goToNextLaunchMode().
-    }
-
     // steer to circularization node
-    if launch_mode = 7 {
+    // TODO: support reaching stable orbit after missing circularization at apoapsis instead of aborting
+    if launch_mode = LAUNCH_MODE_STEER_TO_CIRCULARIZATION_BURN {
         set throttle_to to 0.
         printToLog("Steering to circularization maneuver").
         set steer_to to next_node.
@@ -223,17 +232,16 @@ until launch_complete {
         if steer_error_total > 0.1 {
             goToNextLaunchMode().
         } else {
-            // TODO: support reaching stable orbit after missing circularization at apoapsis instead of aborting
             printToLog("Failed to steer to circularization maneuver. Aborting mission.").
-            set launch_mode to launch_abort_mode.
+            set launch_mode to LAUNCH_MODE_ABORT.
         }
     }
 
     // execute circularization node
-    if launch_mode = 8 {
+    if launch_mode = LAUNCH_MODE_EXECUTE_CIRCULARIZATION_BURN {
 
         // overshot apoapsis but stable orbit reached, stop burning to prevent worse final orbit
-        if apoapsis > ((1 + orbit_max_error_percentage / 100) * target_apoapsis) and periapsis > ship:body:atm:height {
+        if apoapsis > ((1 + ORBIT_MAX_ERROR_PERCENTAGE / 100) * target_apoapsis) and periapsis > ship:body:atm:height {
             set throttle_to to 0.
             goToNextLaunchMode().
             printToLog("Overshot target apoapsis but reached stable orbit nonetheless.").
@@ -242,17 +250,16 @@ until launch_complete {
         // perform burn if we're closer than 1/2 from the total burn time from it
         lock burn_time_remaining to next_node:deltav:mag / max(ship:availablethrust / ship:mass, 0.001).
         if next_node:eta <= (burn_time_remaining / 2) {
-            if burn_time_remaining > 2 {
-                set throttle_to to 1.
-                set steer_to to next_node.
-            } else {
+            set throttle_to to 1.
+            set steer_to to next_node.
+
+            // finalize burn
+            if burn_time_remaining < 0.1 {
                 unlock steering.
-                sas on. // prevent spinning at end of circularization burn
-                set time_to_complete_burn to burn_time_remaining - 0.1.
-                set burn_end_time to time:seconds + time_to_complete_burn.
+                sas on.
+                set burn_end_time to time:seconds + burn_time_remaining.
                 wait until time:seconds > burn_end_time.
                 set throttle_to to 0.
-                unlock burn_time_remaining.
                 remove next_node.
                 goToNextLaunchMode().
                 printToLog("Circularization burn complete.").
@@ -261,32 +268,32 @@ until launch_complete {
     }
 
     // launch sequence completed
-    if launch_mode = 9 {
+    if launch_mode = LAUNCH_MODE_COMPLETED {
         printToLog("Finished launch sequence. Controls now back to manual.").
         set launch_complete to true.
     }
 
     // launch sequence was aborted in any of the above modes
-    if launch_mode = launch_abort_mode {
+    if launch_mode = LAUNCH_MODE_ABORT {
         set throttle_to to 0.
         set ship:control:neutralize to true.
         unlock steering.
         remove next_node.
         sas on.
         abort on.
-        printToLog("Launch aborted.").
+        printToLog("Launch program aborted.").
         break.
     }
 
     // staging detection
-    if launch_mode > 0 and stage:number > stage_until {
+    if launch_mode > LAUNCH_MODE_COUNTDOWN and stage:number > stage_until {
 
         // auto-staging triggers
-        if (launch_mode = 3 or launch_mode = 8) and not staging_in_progress {
+        if (launch_mode = LAUNCH_MODE_GRAVITY_TURN or launch_mode = LAUNCH_MODE_EXECUTE_CIRCULARIZATION_BURN) and not staging_in_progress {
             list engines in engine_list.
             for engine in engine_list {
                 if engine:flameout {
-                    set stage_at_time to time:seconds + stage_separation_delay.
+                    set stage_at_time to time:seconds + STAGE_SEPARATION_DELAY.
                     set staging_in_progress to true.
                     printToLog("Detected engine flameout. Staging required.").
                     break.
@@ -297,7 +304,7 @@ until launch_complete {
         // staging was configured in any launch mode above
         if should_stage {
             set should_stage to false.
-            set stage_at_time to time:seconds + stage_separation_delay.
+            set stage_at_time to time:seconds + STAGE_SEPARATION_DELAY.
             set staging_in_progress to true.
             printToLog("Stage separation requested.").
         }
@@ -310,47 +317,44 @@ until launch_complete {
         }
 
         // new stage has no thrust, we need to stage one more time
-        // otherwise we ignite the engines (if we're not coasting)
         if not staging_in_progress and ship:maxthrust < 0.01 {
-            set stage_at_time to time:seconds + stage_separation_delay.
+            set stage_at_time to time:seconds + STAGE_SEPARATION_DELAY.
             set staging_in_progress to true.
             printToLog("No thrust detected on current stage. Staging required.").
-        } else if launch_mode = 3 or launch_mode = 8 {
-            set throttle_to to 1.
         }
     }
 
     // auto-abort detection scenarios
-    if launch_mode = 3 and vAng(ship:facing:vector, steer_to:vector) > 45 and mission_elapsed_time > 5 {
-        set launch_mode to launch_abort_mode.
+    if launch_mode = LAUNCH_MODE_GRAVITY_TURN and vAng(ship:facing:vector, steer_to:vector) > 45 and mission_elapsed_time > 5 {
+        set launch_mode to LAUNCH_MODE_ABORT.
         printToLog("Detected loss of control. Aborting mission.").
     }
 
-    if launch_mode < 5 and launch_mode > 0 and verticalSpeed < -1.0 {
-        set launch_mode to launch_abort_mode.
+    if launch_mode > LAUNCH_MODE_LIFTOFF and launch_mode < LAUNCH_MODE_SETUP_CIRCULARIZATION_BURN and verticalSpeed < -1.0 {
+        set launch_mode to LAUNCH_MODE_ABORT.
         printToLog("Detected lack of vertical velocity. Aborting mission.").
     }
 
     if ship:parts:length < num_parts and stage:ready {
-        set launch_mode to launch_abort_mode.
+        set launch_mode to LAUNCH_MODE_ABORT.
         printToLog("Detecting vehicle breaking up. Aborting mission.").
     }
 
     // prevent KSP from locking up
-    wait 0.05.
+    wait 0.1.
 }
 
 // check if all launch clamps are on the same stage
 function checkLaunchClamps {
-    set launch_clamp_stage to 999.
+    set launch_clamp_stage to -1.
     for part in ship:parts {
         if part:modules:contains("LaunchClamp") {
-            if launch_clamp_stage = 999 {
+            if launch_clamp_stage = -1 {
                 set launch_clamp_stage to part:stage.
             } else if part:stage <> launch_clamp_stage {
                 print "Not all launch clamps are on the same stage.".
                 print "Please re-configure the staging setup.".
-                wait until false.
+                break.
             }
         }
     }
