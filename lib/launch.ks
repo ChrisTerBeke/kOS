@@ -225,8 +225,8 @@ until launch_complete {
 
         // auto-staging triggers
         if (launch_mode = LAUNCH_MODE_GRAVITY_TURN or launch_mode = LAUNCH_MODE_CIRCULARIZATION_BURN) and not staging_in_progress {
-            set has_flameout to hasEngineFlameOut().
-            if has_flameout {
+            set flameout to hasEngineFlameOut().
+            if flameout {
                 set stage_at_time to time:seconds + STAGE_SEPARATION_DELAY.
                 set staging_in_progress to true.
                 printToLog("Detected engine flameout. Staging required.").
