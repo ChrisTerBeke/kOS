@@ -6,9 +6,15 @@ parameter TARGET_INCLINATION.
 parameter STAGE_UNTIL.
 parameter ROLL.
 
+// TODO: figure out why heading:roll does not work properly
+set steeringManager:rollpid:ki to 0.
+set steeringManager:rollpid:kp to 0.
+
 // global mission constants
+set AUTO_ABORT_DETECTION to true.
 set TURN_START_ALTITUDE to 1500.
 set TURN_END_PITCH_DEGREES to 10.
+set MAX_ORBIT_ECCENTRICITY to 0.005.
 set STAGE_SEPARATION_DELAY to 2.
 set COUNTDOWN_FROM to 5.
 set LAUNCH_LOCATION to ship:geoposition.
@@ -32,7 +38,7 @@ SET LAUNCH_MODE_ABORT to 999.
 // global control variables
 set num_parts to ship:parts:length.
 set throttle_to to 0.
-set steer_to to heading(90, 90, ROLL).
+set steer_to to calculateHeading(90, 90, ROLL).
 
 // global mission variables
 set launch_time to time:seconds + COUNTDOWN_FROM.
@@ -52,10 +58,6 @@ set countdown_ignition_started to false.
 set turn_end_altitude to 0.
 set turn_exponent to 0.
 
-// TODO: figure this out so we can make roll program work
-set steeringManager:rollpid:kp to 0.
-set steeringManager:rollpid:ki to 0.
-
 // detect manual abort
 on abort {
     set launch_mode to LAUNCH_MODE_ABORT.
@@ -65,6 +67,7 @@ on abort {
 until launch_complete {
 
     // pre-launch sequence
+    // TODO: check vehicle TWR and other critical parameters to ensure successful launch
     if launch_mode = LAUNCH_MODE_PRE_LAUNCH {
         checkLaunchClamps().
         set ship:control:pilotmainthrottle to 0.
@@ -108,10 +111,10 @@ until launch_complete {
     }
 
     // vertical ascent program
-    // TODO: roll program
+    // TODO: gradual roll program
     if launch_mode = LAUNCH_MODE_VERTICAL_ASCENT {
         if altitude > TURN_START_ALTITUDE {
-            set steer_to to heading(90, 90, ROLL).
+            set steer_to to calculateHeading(90, 90, ROLL).
             goToNextLaunchMode().
             printToLog("Initiating gravity turn program.").
         }
@@ -132,7 +135,7 @@ until launch_complete {
         } else {
             set steer_to_direction to (90 - TARGET_INCLINATION) + 2 * (abs(TARGET_INCLINATION) - ship:orbit:inclination).
         }
-        set tmp_heading to heading(steer_to_direction, steer_to_pitch, ROLL).
+        set tmp_heading to calculateHeading(steer_to_direction, steer_to_pitch, ROLL).
 
         // limit angle of attack depending on aerodynamic pressure
         if ship:q > 0 {
@@ -165,31 +168,35 @@ until launch_complete {
     }
 
     // coast to edge of atmosphere
-    // TODO: drop fairings when out of atmosphere (auto-detect fairing parts and launch escape system?)
     // TODO: re-raise apoapsis if it fell due to atmospheric drag
-    // TODO: drop stage if low on fuel
     if launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE {
         set steer_to to ship:srfprograde.
+
+        // drop stage if we have not reached the final ascent stage yet
+        // usually this means we have an almost-empty first stage
+        if stage:number > STAGE_UNTIL and not staging_in_progress {
+            set should_stage to true.
+        }
+
+        // out of apmosphere detected
         if altitude > ship:body:atm:height {
+            deployFairings().
             goToNextLaunchMode().
-            printToLog("Reached edge of atmosphere.").
+            printToLog("Reached edge of atmosphere. Fairings separated.").
         }
     }
 
-    // circularization burn
+    // coast to and execute circularization burn
     if launch_mode = LAUNCH_MODE_CIRCULARIZATION_BURN {
         set steer_to to ship:prograde.
         set burn_time_remaining to abs(TARGET_ORBITAL_SPEED - ship:velocity:orbit:mag) / max((ship:availablethrust / ship:mass), 0.001).
-        if burn_time_remaining < 0.1 {
+        if burn_time_remaining < 0.1 and ship:orbit:eccentricity < MAX_ORBIT_ECCENTRICITY {
             // schedule end of burn and cut engines
             set burn_end_time to time:seconds + burn_time_remaining.
             wait until time:seconds > burn_end_time.
             set throttle_to to 0.
             goToNextLaunchMode().
             printToLog("Circularization burn complete.").
-        } else if burn_time_remaining < 1 {
-            // gradually reduce throttle to increase accuracy
-            set throttle_to to max(burn_time_remaining, 0.1).
         } else if eta:apoapsis <= (burn_time_remaining / 2) {
             // full throttle 50% before and 50% after apoapsis
             set throttle_to to 1.
@@ -218,14 +225,12 @@ until launch_complete {
 
         // auto-staging triggers
         if (launch_mode = LAUNCH_MODE_GRAVITY_TURN or launch_mode = LAUNCH_MODE_CIRCULARIZATION_BURN) and not staging_in_progress {
-            list engines in engine_list.
-            for engine in engine_list {
-                if engine:flameout {
-                    set stage_at_time to time:seconds + STAGE_SEPARATION_DELAY.
-                    set staging_in_progress to true.
-                    printToLog("Detected engine flameout. Staging required.").
-                    break.
-                }
+            set has_flameout to hasEngineFlameOut().
+            if has_flameout {
+                set stage_at_time to time:seconds + STAGE_SEPARATION_DELAY.
+                set staging_in_progress to true.
+                printToLog("Detected engine flameout. Staging required.").
+                break.
             }
         }
 
@@ -253,19 +258,25 @@ until launch_complete {
     }
 
     // auto-abort detection scenarios
-    if launch_mode = LAUNCH_MODE_GRAVITY_TURN and vAng(ship:facing:vector, steer_to:vector) > 45 and mission_elapsed_time > 5 {
-        set launch_mode to LAUNCH_MODE_ABORT.
-        printToLog("Detected loss of control. Aborting mission.").
-    }
+    if launch_mode > LAUNCH_MODE_COUNTDOWN and AUTO_ABORT_DETECTION {
 
-    if launch_mode > LAUNCH_MODE_LIFTOFF and launch_mode < LAUNCH_MODE_CIRCULARIZATION_BURN and verticalSpeed < -1.0 {
-        set launch_mode to LAUNCH_MODE_ABORT.
-        printToLog("Detected lack of vertical velocity. Aborting mission.").
-    }
+        // abort when vehicle is going off course
+        if launch_mode = LAUNCH_MODE_GRAVITY_TURN and vAng(ship:facing:vector, steer_to:vector) > 45 and mission_elapsed_time > 5 {
+            set launch_mode to LAUNCH_MODE_ABORT.
+            printToLog("Detected loss of control. Aborting mission.").
+        }
 
-    if ship:parts:length < num_parts and stage:ready {
-        set launch_mode to LAUNCH_MODE_ABORT.
-        printToLog("Detecting vehicle breaking up. Aborting mission.").
+        // abort when thrust is not sufficient
+        if launch_mode > LAUNCH_MODE_LIFTOFF and launch_mode < LAUNCH_MODE_CIRCULARIZATION_BURN and verticalSpeed < -1.0 {
+            set launch_mode to LAUNCH_MODE_ABORT.
+            printToLog("Detected lack of vertical velocity. Aborting mission.").
+        }
+
+        // abort when parts are falling off
+        if ship:parts:length < num_parts and stage:ready {
+            set launch_mode to LAUNCH_MODE_ABORT.
+            printToLog("Detecting vehicle breaking up. Aborting mission.").
+        }
     }
 
     // prevent KSP from locking up
@@ -286,6 +297,19 @@ function checkLaunchClamps {
             }
         }
     }
+}
+
+// check if at least one engine is out of fuel
+function hasEngineFlameOut {
+    list engines in engine_list.
+    local has_flameout is false.
+    for engine in engine_list {
+        if engine:flameout {
+            set has_flameout to true.
+            break.
+        }
+    }
+    return has_flameout.
 }
 
 // get the available thrust of all engines on the curren stage
@@ -316,4 +340,19 @@ function printToLog {
 function doStage {
     stage.
     set num_parts to ship:parts:length.
+}
+
+// calculate a heading with roll
+function calculateHeading {
+    parameter inputHeading, inputPitch, inputRoll.
+    local return_direction is heading(inputHeading, inputPitch).
+    return angleAxis(inputRoll, return_direction:forevector) * return_direction.
+}
+
+// deploy all fairings
+// TODO: filter out fairings we want to keep attached
+function deployFairings {
+    for fairing in ship:modulesNamed("ModuleProceduralFairing") {
+        fairing:doEvent("deploy").
+    }
 }
