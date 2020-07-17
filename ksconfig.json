@@ -1,0 +1,6 @@
+{
+    "archive": "scripts",
+    "linting": {
+        "file-loading": "off"
+    }
+}
