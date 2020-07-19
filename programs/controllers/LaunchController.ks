@@ -97,8 +97,15 @@ function LaunchController {
 		return steer_to.
 	}
 
-	function getThrotte {
+	function getThrottle {
 		return throttle_to.
+	}
+
+	function getTelemetry {
+		return lexicon(
+			"Direction", getDirection(),
+			"Throttle", getThrottle()
+		).
 	}
 
     function _preLaunch {
@@ -250,6 +257,7 @@ function LaunchController {
         "isComplete", isComplete@,
         "getMessages", getMessages@,
 		"getDirection", getDirection@,
-		"getThrottle", getThrotte@
+		"getThrottle", getThrottle@,
+		"getTelemetry", getTelemetry@
     ).
 }

@@ -48,6 +48,13 @@ function OrbitalController {
 		return 0.
 	}
 
+	function getTelemetry {
+		return lexicon(
+			"Direction", getDirection(),
+			"Throttle", getThrottle()
+		).
+	}
+
     function _checkAltitude {
 		// TODO
         // 1) check if current altitude is close to target altitude (with low eccentricity)
@@ -67,6 +74,7 @@ function OrbitalController {
         "setTargetAltitude", setTargetAltitude@,
         "setTargetInclination", setTargetInclination@,
 		"getDirection", getDirection@,
-		"getThrottle", getThrottle@
+		"getThrottle", getThrottle@,
+		"getTelemetry", getTelemetry@
     ).
 }

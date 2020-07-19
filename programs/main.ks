@@ -85,12 +85,14 @@ until program_finished {
         staging_controller:setAutoDetectStaging(launch_mode > LAUNCH_MODE_VERTICAL_ASCENT and stage:number > stop_staging_at).
         staging_controller:setForceStaging(launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE and stage:number > stop_staging_at).
 		steering_controller:setDirection(launch_controller:getDirection()).
+		telemetry_controller:setCustomTelemetry(launch_controller:getTelemetry()).
 		throttle_controller:setThrottle(launch_controller:getThrottle()).
     }
 
 	// controller configuration for orbit mode
 	if program_mode = PROGRAM_MODE_ORBIT {
 		steering_controller:setDirection(orbital_controller:getDirection()).
+		telemetry_controller:setCustomTelemetry(orbital_controller:getTelemetry()).
 		throttle_controller:setThrottle(orbital_controller:getThrottle()).
 	}
 
