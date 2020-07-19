@@ -18,6 +18,9 @@ function OrbitalController {
 
     function setEnabled {
         parameter value.
+		if is_enabled = value {
+			return.
+		}
         set is_enabled to value.
     }
 
@@ -35,7 +38,18 @@ function OrbitalController {
         set target_inclination to value.
     }
 
+	function getDirection {
+		// TODO
+		return ship:prograde.
+	}
+
+	function getThrottle {
+		// TODO
+		return 0.
+	}
+
     function _checkAltitude {
+		// TODO
         // 1) check if current altitude is close to target altitude (with low eccentricity)
         // 2) calculate DeltaV for burn at apoapsis to raise or lower periapsis
         // 3) execute burn to ajust periapsis to target altitude (periapsis might become apoapsis!)
@@ -51,6 +65,8 @@ function OrbitalController {
         "setEnabled", setEnabled@,
         "doAbort", doAbort@,
         "setTargetAltitude", setTargetAltitude@,
-        "setTargetInclination", setTargetInclination@
+        "setTargetInclination", setTargetInclination@,
+		"getDirection", getDirection@,
+		"getThrottle", getThrottle@
     ).
 }

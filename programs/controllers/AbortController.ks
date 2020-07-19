@@ -16,6 +16,9 @@ function AbortController {
 
     function setEnabled {
         parameter value.
+		if is_enabled = value {
+			return.
+		}
         set is_enabled to value.
     }
 

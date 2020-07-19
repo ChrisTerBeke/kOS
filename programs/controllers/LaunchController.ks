@@ -18,7 +18,7 @@ global LAUNCH_MODE_ABORT is 999.
 
 function LaunchController {
 
-    // controller parameters
+    // launch parameters
     parameter target_altitude is 100000.
     parameter target_inclination is 0.
     parameter roll is 0.
@@ -26,7 +26,7 @@ function LaunchController {
     local is_enabled is false.
     local message_list is list().
 
-    // controller constants
+    // launch constants
     local turn_start_altitude is 1500.
     local turn_end_pitch_degrees is 10.
     local max_orbit_eccentricity is 0.05.
@@ -35,14 +35,10 @@ function LaunchController {
     local launch_azimuth is calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
     local target_orbital_speed is calculateOrbitalSpeed(target_altitude).
 
-    // TODO: figure out why heading:roll does not work properly
-    set steeringManager:rollpid:ki to 0.
-    set steeringManager:rollpid:kp to 0.
-
-    // mission variables 
-    local launch_time is 0.
+    // mission variables
     local launch_mode is LAUNCH_MODE_PRE_LAUNCH.
     local launch_complete is false.
+	local launch_time is 0.
     lock mission_elapsed_time to time:seconds - launch_time.
 
     // vehicle control variables
@@ -73,13 +69,9 @@ function LaunchController {
 
     function setEnabled {
         parameter value.
-        if value = true {
-            lock throttle to throttle_to.
-            lock steering to steer_to.
-        } else {
-            unlock throttle.
-            unlock steering.
-        }
+        if is_enabled = value {
+			return.
+		}
         set is_enabled to value.
     }
 
@@ -101,13 +93,19 @@ function LaunchController {
         return messages.
     }
 
+	function getDirection {
+		return steer_to.
+	}
+
+	function getThrotte {
+		return throttle_to.
+	}
+
     function _preLaunch {
         // TODO: check vehicle TWR and other critical parameters to ensure successful launch
         set ship:control:pilotmainthrottle to 0.
         sas off.
         rcs off.
-        lock throttle to throttle_to.
-        lock steering to steer_to.
         set launch_time to time:seconds + countdown_from.
         _goToNextMode().
         _logWithT("Pre-launch checklist complete.").
@@ -250,6 +248,8 @@ function LaunchController {
         "update", update@,
         "setEnabled", setEnabled@,
         "isComplete", isComplete@,
-        "getMessages", getMessages@
+        "getMessages", getMessages@,
+		"getDirection", getDirection@,
+		"getThrottle", getThrotte@
     ).
 }
