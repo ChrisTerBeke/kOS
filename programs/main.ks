@@ -23,7 +23,7 @@ local telemetry_controller is TelemetryController().
 local throttle_controller is ThrottleController().
 
 local detect_loss_of_control_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
-local detect_insufficient_thrust_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN, LAUNCH_MODE_CIRCULARIZATION_BURN).
+local detect_insufficient_thrust_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
 
 // program modes
 global PROGRAM_MODE_IDLE is 0.

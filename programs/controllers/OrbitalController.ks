@@ -50,7 +50,9 @@ function OrbitalController {
 
 	function getTelemetry {
 		return lexicon(
-			"Direction", getDirection(),
+			"Pitch", getDirection():pitch,
+            "Yaw", getDirection():yaw,
+            "Roll", getDirection():roll,
 			"Throttle", getThrottle()
 		).
 	}

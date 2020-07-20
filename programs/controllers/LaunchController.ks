@@ -1,6 +1,6 @@
+runOncePath("programs/helpers/CalculateDeltaV").  // #include "../helpers/CalculateDeltaV.ks"
 runOncePath("programs/helpers/CalculateHeading").  // #include "../helpers/CalculateHeading.ks"
 runOncePath("programs/helpers/CalculateLaunchAzimuth").  // #include "../helpers/CalculateLaunchAzimuth.ks"
-runOncePath("programs/helpers/CalculateOrbitalSpeed").  // #include "../helpers/CalculateOrbitalSpeed.ks"
 runOncePath("programs/helpers/CalculateRemainingBurnTime").  // #include "../helpers/CalculateRemainingBurnTime.ks"
 runOncePath("programs/helpers/GetThrustForStage").  // #include "../helpers/GetThrustForStage.ks"
 runOncePath("programs/helpers/ReleaseLaunchClamps").  // #include "../helpers/ReleaseLaunchClamps.ks"
@@ -29,11 +29,10 @@ function LaunchController {
     // launch constants
     local turn_start_altitude is 1500.
     local turn_end_pitch_degrees is 10.
-    local max_orbit_eccentricity is 0.05.
+    local max_orbit_eccentricity is 0.01.
     local countdown_from is 5.
     local launch_location is ship:geoPosition.
     local launch_azimuth is calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
-    local target_orbital_speed is calculateOrbitalSpeed(target_altitude).
 
     // mission variables
     local launch_mode is LAUNCH_MODE_PRE_LAUNCH.
@@ -51,6 +50,11 @@ function LaunchController {
     // gravity turn variables
     local turn_end_altitude is 0.
     local turn_exponent is 0.
+
+    // circularization variables
+    local burn_time_remaining is 0.
+    local burn_delta_v is 0.
+    local burn_started is false.
 
     function update {
         if not is_enabled {
@@ -103,14 +107,17 @@ function LaunchController {
 
 	function getTelemetry {
 		return lexicon(
-			"Direction", getDirection(),
-			"Throttle", getThrottle()
+			"Pitch", steer_to:pitch,
+            "Yaw", steer_to:yaw,
+            "Roll", steer_to:roll,
+			"Throttle", throttle_to,
+            "Burn time", burn_time_remaining,
+            "Delta V", burn_delta_v
 		).
 	}
 
     function _preLaunch {
         // TODO: check vehicle TWR and other critical parameters to ensure successful launch
-        set ship:control:pilotmainthrottle to 0.
         sas off.
         rcs off.
         set launch_time to time:seconds + countdown_from.
@@ -189,8 +196,8 @@ function LaunchController {
         set steer_to to tmp_heading.
 
         // reduce throttle when nearing target apoapsis so we can fine-tune better
-        if (target_altitude - apoapsis) < 2000 {
-            set throttle_to to 0.2.
+        if (target_altitude - apoapsis) < 2500 {
+            set throttle_to to 0.1.
         }
 
         // gravity turn end conditions
@@ -203,6 +210,7 @@ function LaunchController {
 
     function _coast {
         // TODO: re-raise apoapsis if it fell due to atmospheric drag
+        set throttle_to to 0.
         set steer_to to ship:srfprograde.
 
         // out of apmosphere detected
@@ -213,18 +221,28 @@ function LaunchController {
     }
 
     function _circularize {
+        // TODO: prevent long burns (30s+) that cause high eccentricity and use multiple burns instead
         set steer_to to ship:prograde.
-        local burn_time_remaining is calculateRemainingBurnTime(target_orbital_speed).
-        if burn_time_remaining < 0.5 and (ship:orbit:eccentricity < max_orbit_eccentricity) {
-            // schedule end of burn and cut engines
-            local burn_end_time to time:seconds + burn_time_remaining.
-            wait until time:seconds > burn_end_time.
+        set burn_delta_v to calculateDeltaV(target_altitude).
+        set burn_time_remaining to calculateRemainingBurnTime(burn_delta_v).
+
+        // full throttle 50% before and 50% after apoapsis
+        if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
+            set throttle_to to 1.
+            set burn_started to true.
+        }
+
+        // reduce throttle towards end of burn to improve accuracy
+        if ship:orbit:eccentricity < max_orbit_eccentricity {
+            set throttle_to to 0.1.
+        }
+
+        // cut engines at end of burn
+        if burn_started and burn_time_remaining <= 0 {
             set throttle_to to 0.
+            set burn_started to false.
             _goToNextMode().
             _logWithT("Circularization burn complete.").
-        } else if eta:apoapsis <= (burn_time_remaining / 2) {
-            // full throttle 50% before and 50% after apoapsis
-            set throttle_to to 1.
         }
     }
 

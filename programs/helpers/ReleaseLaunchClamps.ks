@@ -1,6 +1,8 @@
 // release all launch clamps
 function releaseLaunchClamps {
     for clamp in ship:modulesNamed("LaunchClamp") {
-        clamp:doEvent("release clamp").
+        if clamp:hasEvent("release clamp") {
+            clamp:doEvent("release clamp").
+        }
     }
 }

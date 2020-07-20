@@ -44,21 +44,19 @@ function TelemetryController {
         from { local m is 0. } until m = max_messages_on_screen step { set m to m + 1. } do {
             local message_index is message_list:length - 1 - m.
             if message_index > -1 and message_list:length > message_index {
-                print "                                                                             " at (0, message_list_top_row + m).
-                print message_list[message_index] at (0, message_list_top_row + m).
+                _printTelemetryLine(message_list[message_index], message_list_top_row + m).
             }
         }
     }
 
     function _printTelementry {
-        print "Altitude: " + ship:altitude at(0, telemetry_top_row).
-        print "Apoapsis: " + ship:orbit:apoapsis at(0, telemetry_top_row + 1).
-        print "  ETA: " + eta:apoapsis at (0, telemetry_top_row + 2).
-        print "Periapsis: " + ship:orbit:periapsis at (0, telemetry_top_row + 3).
-        print "  ETA: " + eta:periapsis at (0, telemetry_top_row + 4).
-        print "Eccentricity: " + ship:orbit:eccentricity at (0, telemetry_top_row + 5).
-        print "Inclination: " + ship:orbit:inclination at (0, telemetry_top_row + 6).
-        print "Pitch: " + (90 - vectorAngle(up:forevector, facing:forevector)) at (0, telemetry_top_row + 7).
+        _printTelemetryLine("Altitude: " + ship:altitude, telemetry_top_row).
+        _printTelemetryLine("Apoapsis: " + ship:orbit:apoapsis, telemetry_top_row + 1).
+        _printTelemetryLine("  ETA: " + eta:apoapsis, telemetry_top_row + 2).
+        _printTelemetryLine("Periapsis: " + ship:orbit:periapsis, telemetry_top_row + 3).
+        _printTelemetryLine("  ETA: " + eta:periapsis, telemetry_top_row + 4).
+        _printTelemetryLine("Eccentricity: " + ship:orbit:eccentricity, telemetry_top_row + 5).
+        _printTelemetryLine("Inclination: " + ship:orbit:inclination, telemetry_top_row + 6).
 
 		// print the custom telemetry items
 		// we use an iterator on the lexicon key so we can calculate the correct row to print on
@@ -66,8 +64,15 @@ function TelemetryController {
 		until not custom_telemetry_iter:next {
 			local index is custom_telemetry_iter:index.
 			local key is custom_telemetry_iter:value.
-			print key + ": " + custom_telemetry[key] at (0, telemetry_top_row + 8 + index).
+            _printTelemetryLine(key + ": " + custom_telemetry[key], telemetry_top_row + 7 + index).
 		}
+    }
+
+    function _printTelemetryLine {
+        parameter text.
+        parameter line_number.
+        print "                                                                             " at (0, line_number).
+        print text at (0, line_number).
     }
 
     return lexicon(
