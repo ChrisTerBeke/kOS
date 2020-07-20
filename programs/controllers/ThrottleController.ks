@@ -25,8 +25,8 @@ function ThrottleController {
     }
 
     function setThrottle {
-        parameter throttle_amount.
-        set throttle_to to throttle_amount.
+        parameter new_throttle.
+        set throttle_to to new_throttle.
     }
 
 	function doAbort {

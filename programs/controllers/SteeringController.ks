@@ -27,8 +27,8 @@ function SteeringController {
     }
 
     function setDirection {
-        parameter direction.
-        set steer_to to direction.
+        parameter new_direction.
+        set steer_to to new_direction.
     }
 
 	function doAbort {
