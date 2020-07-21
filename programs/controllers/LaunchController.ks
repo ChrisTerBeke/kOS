@@ -18,13 +18,13 @@ global LAUNCH_MODE_ABORT is 999.
 
 function LaunchController {
 
-    // launch parameters
-    parameter target_altitude is 100000.
-    parameter target_inclination is 0.
-    parameter roll is 0.
-
     local is_enabled is false.
     local message_list is list().
+
+    // launch profile
+    local target_altitude is 100000.
+    local target_inclination is 0.
+    local roll is 0.
 
     // launch constants
     local turn_start_altitude is 1500.
@@ -115,6 +115,14 @@ function LaunchController {
             "Delta V", burn_delta_v
 		).
 	}
+
+    // (re)configure the launch profile
+    function setLaunchProfile {
+        parameter launch_parameters.
+        set target_altitude to launch_parameters["target_altitude"].
+        set target_inclination to launch_parameters["target_inclination"].
+        set launch_azimuth to calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
+    }
 
     function _preLaunch {
         // TODO: check vehicle TWR and other critical parameters to ensure successful launch
@@ -276,6 +284,7 @@ function LaunchController {
         "getMessages", getMessages@,
 		"getDirection", getDirection@,
 		"getThrottle", getThrottle@,
-		"getTelemetry", getTelemetry@
+		"getTelemetry", getTelemetry@,
+        "setLaunchProfile", setLaunchProfile@
     ).
 }

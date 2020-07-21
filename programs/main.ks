@@ -1,5 +1,5 @@
-// imports
 runOncePath("programs/controllers/AbortController"). // #include "controllers/AbortController.ks"
+runOncePath("programs/controllers/InputController"). // #include "controllers/InputController.ks"
 runOncePath("programs/controllers/LaunchController"). // #include "controllers/LaunchController.ks"
 runOncePath("programs/controllers/OrbitalController"). // #include "controllers/OrbitalController.ks"
 runOncePath("programs/controllers/StagingController"). // #include "controllers/StagingController.ks"
@@ -7,34 +7,30 @@ runOncePath("programs/controllers/SteeringController"). // #include "controllers
 runOncePath("programs/controllers/TelemetryController"). // #include "controllers/TelemetryController.ks"
 runOncePath("programs/controllers/ThrottleController"). // #include "controllers/ThrottleController.ks"
 
-// default main program
-parameter target_altitude.
-parameter target_inclination.
-parameter stop_staging_at.
-parameter roll.
+// mission config file name
+parameter mission_name.
 
-// configure controllers
+// create controllers
 local abort_controller is AbortController().
-local launch_controller is LaunchController(target_altitude, target_inclination, roll).
-local orbital_controller is OrbitalController(target_altitude).
+local input_controller is InputController().
+local launch_controller is LaunchController().
+local orbital_controller is OrbitalController().
 local staging_controller is StagingController().
 local steering_controller is SteeringController().
 local telemetry_controller is TelemetryController().
 local throttle_controller is ThrottleController().
-
-local detect_loss_of_control_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
-local detect_insufficient_thrust_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
 
 // program modes
 global PROGRAM_MODE_IDLE is 0.
 global PROGRAM_MODE_LAUNCH is 1.
 global PROGRAM_MODE_ORBIT is 2.
 global PROGRAM_MODE_ABORT is 999.
-
 local program_mode is PROGRAM_MODE_IDLE.
 local program_finished is false.
 
-// setup triggers
+// configure abort modes
+local detect_loss_of_control_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
+local detect_insufficient_thrust_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
 on abort {
     set program_mode to PROGRAM_MODE_ABORT.
     abort_controller:doAbort().
@@ -42,29 +38,35 @@ on abort {
     orbital_controller:doAbort().
 	staging_controller:doAbort().
 	steering_controller:doAbort().
-	// TelemetryController has no abort mode
 	throttle_controller:doAbort().
 }
+
+// configure the mission
+local mission_profile is input_controller:getMissionProfile(mission_name).
 
 // main loop
 clearScreen.
 until program_finished {
 
-    // detect terminal input to switch program modes
-    if terminal:input:haschar {
-        local input is terminal:input:getchar().
-        // start in launch mode
-        if input = "l" and program_mode = PROGRAM_MODE_IDLE {
-            set program_mode to PROGRAM_MODE_LAUNCH.
+    // start launch sequence on enter
+    if input_controller:enterPressed() and program_mode = PROGRAM_MODE_IDLE {
+        if mission_profile:hasKey("launch") {
+            launch_controller:setLaunchProfile(mission_profile["launch"]).
         }
-        // start in orbit mode
-        if input = "o" and program_mode = PROGRAM_MODE_IDLE {
-            set program_mode to PROGRAM_MODE_ORBIT.
-        }
+        set program_mode to PROGRAM_MODE_LAUNCH.
     }
 
-    // after launch we go to orbit mode automatically
-    if launch_controller:isComplete() {
+    // go to orbit mode if we're already in a stable orbit or if the launch sequence was completed
+    local in_stable_orbit is periapsis > 70000.
+    if (in_stable_orbit and program_mode = PROGRAM_MODE_IDLE) or (launch_controller:isComplete() and program_mode = PROGRAM_MODE_LAUNCH) {
+        if mission_profile:hasKey("orbit") {
+            orbital_controller:setOrbitProfile(mission_profile["orbit"]).
+        } else {
+            orbital_controller:setOrbitProfile(lexicon(
+                "target_apoapsis", apoapsis,
+                "target_periapsis", periapsis
+            )).
+        }
         set program_mode to PROGRAM_MODE_ORBIT.
     }
 
@@ -82,8 +84,8 @@ until program_finished {
         local launch_mode is launch_controller:getLaunchMode().
         abort_controller:setAbortOnLossOfControl(detect_loss_of_control_launch_modes:contains(launch_mode)).
         abort_controller:setAbortOnInsufficientThrust(detect_insufficient_thrust_launch_modes:contains(launch_mode)).
-        staging_controller:setAutoDetectStaging(launch_mode > LAUNCH_MODE_VERTICAL_ASCENT and stage:number > stop_staging_at).
-        staging_controller:setForceStaging(launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE and stage:number > stop_staging_at).
+        staging_controller:setAutoDetectStaging(launch_mode > LAUNCH_MODE_VERTICAL_ASCENT).
+        staging_controller:setForceStaging(launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE).
 		steering_controller:setDirection(launch_controller:getDirection()).
 		telemetry_controller:setCustomTelemetry(launch_controller:getTelemetry()).
 		throttle_controller:setThrottle(launch_controller:getThrottle()).
@@ -102,6 +104,7 @@ until program_finished {
 
     // update all controllers
     abort_controller:update().
+    input_controller:update().
     launch_controller:update().
     orbital_controller:update().
     staging_controller:update().
