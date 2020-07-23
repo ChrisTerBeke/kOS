@@ -1,0 +1,35 @@
+{
+    "entries": [
+        "vehicle",
+        {
+            "entries": [
+                "max_launch_stage",
+                0,
+                "force_staging_at_edge_of_atmosphere",
+                false
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "launch",
+        {
+            "entries": [
+                "target_altitude",
+                120000,
+                "target_inclination",
+                0
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "orbit",
+        {
+            "entries": [
+                "target_apoapsis",
+                200000,
+                "target_periapsis",
+                200000
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        }
+    ],
+    "$type": "kOS.Safe.Encapsulation.Lexicon"
+}

@@ -54,7 +54,7 @@ function StagingController {
 
     function _checkStaging {
         local flameout is checkEngineFlameOut() and auto_detect_staging.
-        local no_thrust is ship:maxthrust < 0.01.
+        local no_thrust is ship:maxthrust < 0.01 and auto_detect_staging.
         if (flameout or no_thrust or should_stage) and not staging_in_progress {
             set should_stage to false.
             set stage_at_time to time:seconds + stage_separation_delay.

@@ -3,7 +3,7 @@ function checkEngineFlameOut {
     list engines in engine_list.
     local has_flameout is false.
     for engine in engine_list {
-        if engine:flameout {
+        if engine:ignition and engine:flameout {
             set has_flameout to true.
             break.
         }

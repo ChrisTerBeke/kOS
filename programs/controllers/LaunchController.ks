@@ -242,7 +242,7 @@ function LaunchController {
 
         // reduce throttle towards end of burn to improve accuracy
         if ship:orbit:eccentricity < max_orbit_eccentricity {
-            set throttle_to to 0.1.
+            set throttle_to to 0.05.
         }
 
         // cut engines at end of burn

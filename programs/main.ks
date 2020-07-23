@@ -6,6 +6,7 @@ runOncePath("programs/controllers/StagingController"). // #include "controllers/
 runOncePath("programs/controllers/SteeringController"). // #include "controllers/SteeringController.ks"
 runOncePath("programs/controllers/TelemetryController"). // #include "controllers/TelemetryController.ks"
 runOncePath("programs/controllers/ThrottleController"). // #include "controllers/ThrottleController.ks"
+runOncePath("programs/models/Mission"). // #include "models/Mission.ks"
 
 // mission config file name
 parameter mission_name.
@@ -42,7 +43,7 @@ on abort {
 }
 
 // configure the mission
-local mission_profile is input_controller:getMissionProfile(mission_name).
+local mission is Mission(input_controller:getMissionProfile(mission_name)).
 
 // main loop
 clearScreen.
@@ -50,23 +51,14 @@ until program_finished {
 
     // start launch sequence on enter
     if input_controller:enterPressed() and program_mode = PROGRAM_MODE_IDLE {
-        if mission_profile:hasKey("launch") {
-            launch_controller:setLaunchProfile(mission_profile["launch"]).
-        }
+        launch_controller:setLaunchProfile(mission:getLaunchProfile()).
         set program_mode to PROGRAM_MODE_LAUNCH.
     }
 
     // go to orbit mode if we're already in a stable orbit or if the launch sequence was completed
     local in_stable_orbit is periapsis > 70000.
     if (in_stable_orbit and program_mode = PROGRAM_MODE_IDLE) or (launch_controller:isComplete() and program_mode = PROGRAM_MODE_LAUNCH) {
-        if mission_profile:hasKey("orbit") {
-            orbital_controller:setOrbitProfile(mission_profile["orbit"]).
-        } else {
-            orbital_controller:setOrbitProfile(lexicon(
-                "target_apoapsis", apoapsis,
-                "target_periapsis", periapsis
-            )).
-        }
+        orbital_controller:setOrbitProfile(mission:getOrbitProfile()).
         set program_mode to PROGRAM_MODE_ORBIT.
     }
 
@@ -82,10 +74,11 @@ until program_finished {
     // controller configuration for launch mode
     if program_mode = PROGRAM_MODE_LAUNCH {
         local launch_mode is launch_controller:getLaunchMode().
+        local allow_staging is stage:number > mission:maxStageDuringLaunch().
         abort_controller:setAbortOnLossOfControl(detect_loss_of_control_launch_modes:contains(launch_mode)).
         abort_controller:setAbortOnInsufficientThrust(detect_insufficient_thrust_launch_modes:contains(launch_mode)).
-        staging_controller:setAutoDetectStaging(launch_mode > LAUNCH_MODE_VERTICAL_ASCENT).
-        staging_controller:setForceStaging(launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE).
+        staging_controller:setAutoDetectStaging(launch_mode > LAUNCH_MODE_VERTICAL_ASCENT and allow_staging).
+        staging_controller:setForceStaging(launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE and allow_staging and mission:stageAtEdgeOfAtmosphere()).
 		steering_controller:setDirection(launch_controller:getDirection()).
 		telemetry_controller:setCustomTelemetry(launch_controller:getTelemetry()).
 		throttle_controller:setThrottle(launch_controller:getThrottle()).
@@ -93,6 +86,9 @@ until program_finished {
 
 	// controller configuration for orbit mode
 	if program_mode = PROGRAM_MODE_ORBIT {
+        abort_controller:setAbortOnLossOfControl(false).
+        abort_controller:setAbortOnInsufficientThrust(false).
+        staging_controller:setAutoDetectStaging(false).
 		steering_controller:setDirection(orbital_controller:getDirection()).
 		telemetry_controller:setCustomTelemetry(orbital_controller:getTelemetry()).
 		throttle_controller:setThrottle(orbital_controller:getThrottle()).
@@ -112,5 +108,5 @@ until program_finished {
     telemetry_controller:update().
 
     // prevent KSP from locking up
-    wait 0.1.
+    wait 0.05.
 }
