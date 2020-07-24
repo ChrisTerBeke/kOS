@@ -86,7 +86,7 @@ function OrbitalController {
         local transfer_orbit is Orbit(target_apoapsis, original_orbit:getApoapsis(), ship:orbit:inclination).
         local final_orbit is Orbit(target_apoapsis, target_periapsis, ship:orbit:inclination).
         local target_orbit is current_orbit.
-.
+
         // calculate DeltaV needed to get from the original orbit into the transer orbit
         if orbit_mode = ORBIT_MODE_ORIGINAL {
             set burn_delta_v to calculateDeltaV(current_orbit:getApoapsis(), transfer_orbit:getApoapsis(), transfer_orbit:getPeriapsis()).

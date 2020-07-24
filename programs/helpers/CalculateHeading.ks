@@ -1,5 +1,4 @@
 function calculateHeading {
-    parameter inputHeading, inputPitch, inputRoll.
-    local return_direction is heading(inputHeading, inputPitch).
-    return angleAxis(inputRoll, return_direction:forevector) * return_direction.
+    parameter input_heading, input_pitch, input_roll.
+    return heading(input_heading, input_pitch) + r(0, 0, input_roll).
 }
