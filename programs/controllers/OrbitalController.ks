@@ -81,6 +81,7 @@ function OrbitalController {
     function _checkOrbit {
         // TODO: add inclination change logic (e.g. burn vector instead of prograde)
         // TODO: prevent long burns (30s+) that cause high eccentricity deviation and use multiple burns instead
+        // TODO: improve accuracy for larger orbital insertion burns (e.g. to geostationary transfer orbit)
 
         // TODO: only trigger this on input?
         if orbit_mode = ORBIT_MODE_IDLE {
