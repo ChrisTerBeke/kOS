@@ -109,7 +109,7 @@ function OrbitalController {
         }
 
         // reduce throttle towards end of burn to improve accuracy
-        if burn_started and abs(current_orbit:getEccentricity() - target_orbit:getEccentricity()) < 0.05 {
+        if burn_started and abs(current_orbit:getEccentricity() - target_orbit:getEccentricity()) < 0.01 {
             set throttle_to to 0.1.
         }
 
