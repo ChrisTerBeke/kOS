@@ -95,6 +95,7 @@ until program_finished {
 
     // pipe all messages to the telemetry controller
     telemetry_controller:addMessages(launch_controller:getMessages()).
+    telemetry_controller:addMessages(orbital_controller:getMessages()).
     telemetry_controller:addMessages(staging_controller:getMessages()).
 
     // update all controllers

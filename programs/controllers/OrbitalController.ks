@@ -9,6 +9,7 @@ global ORBIT_MODE_FINAL is 2.
 function OrbitalController {
 
     local is_enabled is false.
+    local message_list is list().
 
     // vehicle control variables
     local throttle_to is 0.
@@ -63,6 +64,12 @@ function OrbitalController {
 		).
 	}
 
+    function getMessages {
+        local messages is message_list:copy().
+        message_list:clear().
+        return messages.
+    }
+
     // (re)configure the orbit profile
     function setOrbitProfile {
         parameter orbit_parameters.
@@ -106,6 +113,7 @@ function OrbitalController {
         if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
             set throttle_to to 1.
             set burn_started to true.
+            _logWithT("Started orbital correction burn.").
         }
 
         // reduce throttle towards end of burn to improve accuracy
@@ -123,7 +131,14 @@ function OrbitalController {
             } else if orbit_mode = ORBIT_MODE_TRANSFER {
                 set orbit_mode to ORBIT_MODE_FINAL.
             }
+            _logWithT("Finished orbital correction burn.").
         }
+    }
+
+    function _logWithT {
+        local parameter text.
+        local line is "T+" + round(missionTime, 2) + ": " + text.
+        message_list:add(line).
     }
 
     return lexicon(
@@ -133,6 +148,7 @@ function OrbitalController {
 		"getDirection", getDirection@,
 		"getThrottle", getThrottle@,
 		"getTelemetry", getTelemetry@,
+        "getMessages", getMessages@,
         "setOrbitProfile", setOrbitProfile@
     ).
 }
