@@ -4,7 +4,7 @@ function Mission {
 
     function getLaunchProfile {
         if not input_lex:hasKey("launch") {
-            return lexicon("target_altitude", 120000, "target_inclination", 0).
+            return lexicon("target_altitude", 120000, "target_inclination", 0, "roll", 0).
         }
         return input_lex["launch"].
     }

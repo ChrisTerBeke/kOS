@@ -29,7 +29,6 @@ function LaunchController {
     // launch constants
     local turn_start_altitude is 1500.
     local turn_end_pitch_degrees is 10.
-    local max_orbit_eccentricity is 0.01.
     local countdown_from is 5.
     local launch_location is ship:geoPosition.
     local launch_azimuth is calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
@@ -42,7 +41,7 @@ function LaunchController {
 
     // vehicle control variables
     local throttle_to is 0.
-    local steer_to is calculateHeading(90, 90, roll).
+    local steer_to is calculateHeading(90, 90, ship:facing:roll + vectorangle(up:vector, ship:facing:starvector)).
 
     // countdown variables
     local countdown_ignition_started is false.
@@ -121,6 +120,7 @@ function LaunchController {
         parameter launch_parameters.
         set target_altitude to launch_parameters["target_altitude"].
         set target_inclination to launch_parameters["target_inclination"].
+        set roll to launch_parameters["roll"].
         set launch_azimuth to calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
     }
 
@@ -162,9 +162,12 @@ function LaunchController {
     }
 
     function _verticalAscent {
-        // TODO: gradual roll program
+        if altitude > 200 {
+            // start the roll program once clear of the tower
+            set steer_to to calculateHeading(90, 90, roll).
+        }
         if altitude > turn_start_altitude {
-            set steer_to to calculateHeading(90, 90, ROLL).
+            set steer_to to calculateHeading(90, 90, roll).
             _goToNextMode().
             _logWithT("Initiating gravity turn program.").
         }
@@ -184,7 +187,7 @@ function LaunchController {
         } else {
             set steer_to_direction to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
         }
-        local tmp_heading is calculateHeading(steer_to_direction, steer_to_pitch, ROLL).
+        local tmp_heading is calculateHeading(steer_to_direction, steer_to_pitch, roll).
 
         // limit angle of attack depending on aerodynamic pressure
         if ship:q > 0 {
@@ -205,7 +208,7 @@ function LaunchController {
 
         // reduce throttle when nearing target apoapsis so we can fine-tune better
         if (target_altitude - apoapsis) < 2500 {
-            set throttle_to to 0.1.
+            set throttle_to to 0.05.
         }
 
         // gravity turn end conditions
@@ -219,7 +222,7 @@ function LaunchController {
     function _coast {
         // TODO: re-raise apoapsis if it fell due to atmospheric drag
         set throttle_to to 0.
-        set steer_to to ship:srfprograde.
+        set steer_to to ship:prograde.
 
         // out of apmosphere detected
         if altitude > ship:body:atm:height {
@@ -241,8 +244,8 @@ function LaunchController {
         }
 
         // reduce throttle towards end of burn to improve accuracy
-        if ship:orbit:eccentricity < max_orbit_eccentricity {
-            set throttle_to to 0.05.
+        if ship:orbit:eccentricity < 0.01 {
+            set throttle_to to 0.1.
         }
 
         // cut engines at end of burn

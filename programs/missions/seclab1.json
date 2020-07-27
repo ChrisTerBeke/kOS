@@ -16,6 +16,8 @@
                 "target_altitude",
                 140000,
                 "target_inclination",
+                0,
+                "roll",
                 0
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"

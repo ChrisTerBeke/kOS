@@ -110,7 +110,7 @@ function OrbitalController {
 
         // reduce throttle towards end of burn to improve accuracy
         if burn_started and abs(current_orbit:getEccentricity() - target_orbit:getEccentricity()) < 0.05 {
-            set throttle_to to 0.05.
+            set throttle_to to 0.1.
         }
 
         // cut engines at end of burn and update orbit mode

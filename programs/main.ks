@@ -56,8 +56,7 @@ until program_finished {
     }
 
     // go to orbit mode if we're already in a stable orbit or if the launch sequence was completed
-    local in_stable_orbit is periapsis > 70000.
-    if (in_stable_orbit and program_mode = PROGRAM_MODE_IDLE) or (launch_controller:isComplete() and program_mode = PROGRAM_MODE_LAUNCH) {
+    if (periapsis > 70000 and program_mode = PROGRAM_MODE_IDLE) or (launch_controller:isComplete() and program_mode = PROGRAM_MODE_LAUNCH) {
         orbital_controller:setOrbitProfile(mission:getOrbitProfile()).
         set program_mode to PROGRAM_MODE_ORBIT.
     }
@@ -108,5 +107,5 @@ until program_finished {
     telemetry_controller:update().
 
     // prevent KSP from locking up
-    wait 0.05.
+    wait 0.2.
 }

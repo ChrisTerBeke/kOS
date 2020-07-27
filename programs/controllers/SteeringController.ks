@@ -4,10 +4,6 @@ function SteeringController {
     local is_enabled is false.
 	local steer_to is up.
 
-	// TODO: is this still needed?
-    // set steeringManager:rollpid:ki to 0.
-    // set steeringManager:rollpid:kp to 0.
-
     function update {
         if not is_enabled {
             return.
