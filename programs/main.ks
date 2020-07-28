@@ -61,6 +61,11 @@ until program_finished {
         set program_mode to PROGRAM_MODE_ORBIT.
     }
 
+    // finish the program after orbital insertion is complete
+    if orbital_controller:isComplete() and program_mode = PROGRAM_MODE_ORBIT {
+        set program_finished to true.
+    }
+
     // configure controller activation
     abort_controller:setEnabled(program_mode > PROGRAM_MODE_IDLE).
     launch_controller:setEnabled(program_mode = PROGRAM_MODE_LAUNCH).
@@ -110,3 +115,4 @@ until program_finished {
     // prevent KSP from locking up
     wait 0.2.
 }
+clearScreen.

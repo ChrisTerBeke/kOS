@@ -78,6 +78,10 @@ function OrbitalController {
         // TODO: add target inclination
     }
 
+    function isComplete {
+        return orbit_mode = ORBIT_MODE_FINAL.
+    }
+
     function _checkOrbit {
         // TODO: add inclination change logic (e.g. burn vector instead of prograde)
         // TODO: prevent long burns (30s+) that cause high eccentricity deviation and use multiple burns instead
@@ -108,6 +112,13 @@ function OrbitalController {
         }
 
         set burn_time_remaining to calculateRemainingBurnTime(burn_delta_v).
+
+        // we are already in our desired orbit
+        if burn_time_remaining < 0.05 and orbit_mode = ORBIT_MODE_ORIGINAL {
+            set orbit_mode to ORBIT_MODE_FINAL.
+            return.
+        }
+
         set steer_to to ship:prograde.
 
         // start burning at 50% of our total burn time before apoapsis for highest precision
@@ -150,6 +161,7 @@ function OrbitalController {
 		"getThrottle", getThrottle@,
 		"getTelemetry", getTelemetry@,
         "getMessages", getMessages@,
-        "setOrbitProfile", setOrbitProfile@
+        "setOrbitProfile", setOrbitProfile@,
+        "isComplete", isComplete@
     ).
 }

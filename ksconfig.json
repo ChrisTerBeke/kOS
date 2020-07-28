@@ -1,5 +1,5 @@
 {
-    "archive": "scripts",
+    "archive": ".",
     "linting": {
         "file-loading": "off"
     }

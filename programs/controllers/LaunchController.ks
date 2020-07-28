@@ -162,12 +162,14 @@ function LaunchController {
     }
 
     function _verticalAscent {
+
+        // start the roll program once clear of the tower
         if altitude > 200 {
-            // start the roll program once clear of the tower
             set steer_to to calculateHeading(90, 90, roll).
         }
+
+        // start gravity turn at given altitude
         if altitude > turn_start_altitude {
-            set steer_to to calculateHeading(90, 90, roll).
             _goToNextMode().
             _logWithT("Initiating gravity turn program.").
         }
@@ -207,8 +209,8 @@ function LaunchController {
         set steer_to to tmp_heading.
 
         // reduce throttle when nearing target apoapsis so we can fine-tune better
-        if (target_altitude - apoapsis) < 2500 {
-            set throttle_to to 0.05.
+        if (target_altitude - apoapsis) < 5000 {
+            set throttle_to to 0.1.
         }
 
         // gravity turn end conditions
@@ -227,12 +229,14 @@ function LaunchController {
         // out of apmosphere detected
         if altitude > ship:body:atm:height {
             _goToNextMode().
-            _logWithT("Reached edge of atmosphere. Fairings separated.").
+            _logWithT("Reached edge of atmosphere. Coasting to circularization burn.").
         }
     }
 
     function _circularize {
         // TODO: prevent long burns (30s+) that cause high eccentricity and use multiple burns instead
+        // TODO: improve accuracy depending on TWR
+
         set steer_to to ship:prograde.
         set burn_delta_v to calculateDeltaV(target_altitude).
         set burn_time_remaining to calculateRemainingBurnTime(burn_delta_v).
