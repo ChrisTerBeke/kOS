@@ -1,4 +1,5 @@
 runOncePath("programs/helpers/CalculateDeltaV"). // #include "../helpers/CalculateDeltaV.ks"
+runOncePath("programs/helpers/CalculateRemainingBurnTime"). // #include "../helpers/calculateRemainingBurnTime.ks"
 runOncePath("programs/models/Orbit"). // #include "../models/Orbit.ks"
 
 global ORBIT_MODE_IDLE is -1.
