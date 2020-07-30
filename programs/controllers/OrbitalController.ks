@@ -1,4 +1,5 @@
 runOncePath("programs/helpers/CalculateDeltaV"). // #include "../helpers/CalculateDeltaV.ks"
+runOncePath("programs/helpers/CalculateRemainingBurnTime"). // #include "../helpers/calculateRemainingBurnTime.ks"
 runOncePath("programs/models/Orbit"). // #include "../models/Orbit.ks"
 
 global ORBIT_MODE_IDLE is -1.
@@ -55,10 +56,10 @@ function OrbitalController {
 
 	function getTelemetry {
 		return lexicon(
-			"Pitch", getDirection():pitch,
-            "Yaw", getDirection():yaw,
-            "Roll", getDirection():roll,
-			"Throttle", getThrottle(),
+			"Pitch", steer_to:pitch,
+            "Yaw", steer_to:yaw,
+            "Roll", steer_to:roll,
+			"Throttle", throttle_to,
             "Burn time", burn_time_remaining,
             "Delta V", burn_delta_v
 		).
@@ -70,7 +71,7 @@ function OrbitalController {
         return messages.
     }
 
-    // (re)configure the orbit profile
+    // (re-)configure the orbit profile
     function setOrbitProfile {
         parameter orbit_parameters.
         set target_apoapsis to orbit_parameters["target_apoapsis"].
