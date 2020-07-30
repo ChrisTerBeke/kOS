@@ -126,6 +126,7 @@ function LaunchController {
 
     function _preLaunch {
         // TODO: check vehicle TWR and other critical parameters to ensure successful launch
+        // TODO: move toggling of SAS and RCS to steering controller
         sas off.
         rcs off.
         set launch_time to time:seconds + countdown_from.

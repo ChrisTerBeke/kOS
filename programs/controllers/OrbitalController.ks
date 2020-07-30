@@ -82,6 +82,10 @@ function OrbitalController {
         return orbit_mode = ORBIT_MODE_FINAL.
     }
 
+    function _goToNextMode {
+        set orbit_mode to orbit_mode + 1.
+    }
+
     function _checkOrbit {
         // TODO: add inclination change logic (e.g. burn vector instead of prograde)
         // TODO: prevent long burns (30s+) that cause high eccentricity deviation and use multiple burns instead
@@ -113,9 +117,9 @@ function OrbitalController {
 
         set burn_time_remaining to calculateRemainingBurnTime(burn_delta_v).
 
-        // we are already in our desired orbit
-        if burn_time_remaining < 0.05 and orbit_mode = ORBIT_MODE_ORIGINAL {
-            set orbit_mode to ORBIT_MODE_FINAL.
+        // we are already in our desired orbit, no burn needed
+        if burn_time_remaining < 0.05 {
+            _goToNextMode().
             return.
         }
 
@@ -137,12 +141,7 @@ function OrbitalController {
         if burn_started and burn_time_remaining < 0.05 {
             set throttle_to to 0.
             set burn_started to false.
-            // TODO: check if our orbit is actually correct
-            if orbit_mode = ORBIT_MODE_ORIGINAL {
-                set orbit_mode to ORBIT_MODE_TRANSFER.
-            } else if orbit_mode = ORBIT_MODE_TRANSFER {
-                set orbit_mode to ORBIT_MODE_FINAL.
-            }
+            _goToNextMode().
             _logWithT("Finished orbital correction burn.").
         }
     }

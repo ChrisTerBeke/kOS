@@ -82,6 +82,7 @@ until program_finished {
         abort_controller:setAbortOnLossOfControl(detect_loss_of_control_launch_modes:contains(launch_mode)).
         abort_controller:setAbortOnInsufficientThrust(detect_insufficient_thrust_launch_modes:contains(launch_mode)).
         staging_controller:setAutoDetectStaging(launch_mode > LAUNCH_MODE_VERTICAL_ASCENT and allow_staging).
+        // TODO: stage at actual edge, not when coast starts
         staging_controller:setForceStaging(launch_mode = LAUNCH_MODE_COAST_TO_EDGE_OF_ATMOSPHERE and allow_staging and mission:stageAtEdgeOfAtmosphere()).
 		steering_controller:setDirection(launch_controller:getDirection()).
 		telemetry_controller:setCustomTelemetry(launch_controller:getTelemetry()).

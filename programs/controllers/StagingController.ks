@@ -1,5 +1,4 @@
 runOncePath("programs/helpers/CheckEngineFlameOut"). // #include "../helpers/CheckEngineFlameOut.ks"
-runOncePath("programs/helpers/DeployFairings"). // #include "../helpers/DeployFairings.ks"
 
 function StagingController {
 
@@ -16,7 +15,6 @@ function StagingController {
             return.
         }
         _checkStaging().
-        _checkFairingDeploy().
     }
 
     function setEnabled {
@@ -65,12 +63,6 @@ function StagingController {
             stage.
             set staging_in_progress to false.
             _logWithT("Stage separation confirmed.").
-        }
-    }
-
-    function _checkFairingDeploy {
-        if altitude > ship:body:atm:height {
-            deployFairings().
         }
     }
 
