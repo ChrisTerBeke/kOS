@@ -18,9 +18,10 @@ function OrbitalController {
     
     // orbital parameters
     local orbit_mode is ORBIT_MODE_IDLE.
-    local original_orbit is false.
     local target_apoapsis is 0.
     local target_periapsis is 0.
+    local original_orbit is Orbit(apoapsis, periapsis, ship:orbit:inclination).
+    local target_orbit is original_orbit.
 
     // burn parameters
     local burn_started is false.
@@ -92,34 +93,21 @@ function OrbitalController {
         // TODO: prevent long burns (30s+) that cause high eccentricity deviation and use multiple burns instead
         // TODO: improve accuracy for larger orbital insertion burns (e.g. to geostationary transfer orbit)
 
-        // TODO: only trigger this on input?
         if orbit_mode = ORBIT_MODE_IDLE {
             set original_orbit to Orbit(apoapsis, periapsis, ship:orbit:inclination).
-            set orbit_mode to ORBIT_MODE_ORIGINAL.
+            set target_orbit to Orbit(apoapsis, periapsis, ship:orbit:inclination).
+        } else if orbit_mode = ORBIT_MODE_ORIGINAL {
+            set target_orbit to Orbit(target_apoapsis, original_orbit:getApoapsis(), ship:orbit:inclination).
+        } else if orbit_mode = ORBIT_MODE_TRANSFER {
+            set target_orbit to Orbit(target_apoapsis, target_periapsis, ship:orbit:inclination).
         }
 
-        // define the three orbits involved in a Hohmann-like transfer
-        local current_orbit is Orbit(apoapsis, periapsis, ship:orbit:inclination).
-        local transfer_orbit is Orbit(target_apoapsis, original_orbit:getApoapsis(), ship:orbit:inclination).
-        local final_orbit is Orbit(target_apoapsis, target_periapsis, ship:orbit:inclination).
-        local target_orbit is current_orbit.
-
-        // calculate DeltaV needed to get from the original orbit into the transer orbit
-        if orbit_mode = ORBIT_MODE_ORIGINAL {
-            set burn_delta_v to calculateDeltaV(current_orbit:getApoapsis(), transfer_orbit:getApoapsis(), transfer_orbit:getPeriapsis()).
-            set target_orbit to transfer_orbit.
-        }
-
-        // calculate DeltaV needed to get from the transfer orbit into the final orbit
-        if orbit_mode = ORBIT_MODE_TRANSFER {
-            set burn_delta_v to calculateDeltaV(transfer_orbit:getApoapsis(), final_orbit:getApoapsis(), final_orbit:getPeriapsis()).
-            set target_orbit to final_orbit.
-        }
-
+        set burn_delta_v to calculateDeltaV(altitude, target_orbit:getApoapsis(), target_orbit:getPeriapsis()).
         set burn_time_remaining to calculateRemainingBurnTime(burn_delta_v).
 
-        // we are already in our desired orbit, no burn needed
-        if burn_time_remaining < 0.05 {
+        // no need for a burn
+        if not burn_started and burn_time_remaining < 0.05 {
+            _logWithT("Skip orbital insertion burn: " + orbit_mode + ".").
             _goToNextMode().
             return.
         }
@@ -130,11 +118,11 @@ function OrbitalController {
         if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
             set throttle_to to 1.
             set burn_started to true.
-            _logWithT("Started orbital correction burn.").
+            _logWithT("Started orbital insertion burn: " + orbit_mode + ".").
         }
 
         // reduce throttle towards end of burn to improve accuracy
-        if burn_started and abs(current_orbit:getEccentricity() - target_orbit:getEccentricity()) < 0.01 {
+        if burn_started and abs(ship:orbit:eccentricity - target_orbit:getEccentricity()) < 0.02 {
             set throttle_to to 0.1.
         }
 
@@ -142,8 +130,8 @@ function OrbitalController {
         if burn_started and burn_time_remaining < 0.05 {
             set throttle_to to 0.
             set burn_started to false.
+            _logWithT("Finished orbital insertion burn: " + orbit_mode + ".").
             _goToNextMode().
-            _logWithT("Finished orbital correction burn.").
         }
     }
 
