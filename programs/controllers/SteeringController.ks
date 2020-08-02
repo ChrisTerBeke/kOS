@@ -8,6 +8,13 @@ function SteeringController {
         if not is_enabled {
             return.
         }
+
+        // turn on RCS when in space
+        if altitude > ship:body:atm:height {
+            rcs on.
+        } else {
+            rcs off.
+        }
     }
 
     function setEnabled {
@@ -15,9 +22,11 @@ function SteeringController {
 		if is_enabled = value {
 			return.
 		} else if value = true {
+            sas off.
             lock steering to steer_to.
         } else {
             unlock steering.
+            sas on.
         }
         set is_enabled to value.
     }
@@ -28,7 +37,7 @@ function SteeringController {
     }
 
 	function doAbort {
-		set is_enabled to false.
+        setEnabled(false).
 	}
 
     return lexicon(
