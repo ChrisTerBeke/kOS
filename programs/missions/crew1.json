@@ -26,9 +26,9 @@
         {
             "entries": [
                 "target_apoapsis",
-                120000,
+                150000,
                 "target_periapsis",
-                120000
+                150000
             ],
             "$type": "kOS.Safe.Encapsulation.Lexicon"
         }
