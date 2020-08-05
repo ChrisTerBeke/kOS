@@ -47,6 +47,7 @@ function Hohmann {
         local remaining_burn_time is nextBurnRemainingTime().
 
         if remaining_burn_time < 0.05 {
+            _planNextBurn().
             return.
         }
 
@@ -77,6 +78,9 @@ function Hohmann {
     }
 
     function _planNextBurn {
+        if current_mode = ORBIT_MODE_FINAL {
+            return.
+        }
         set current_mode to current_mode + 1.
 
         // re-calculate orbits as they might have changed depending on actual current orbit
