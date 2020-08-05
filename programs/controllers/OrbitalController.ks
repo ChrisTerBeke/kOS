@@ -19,7 +19,7 @@ function OrbitalController {
         // go to the next planned maneuver in the queue if the current one is done
         if (current_maneuver:isComplete() or current_maneuver = false) and maneuvers:length > 0 {
             set current_maneuver to maneuvers:pop().
-            _logWithT("Executing next planned maneuver.").
+            _logWithT("Executing next planned maneuver using " + current_maneuver:totalDeltaV() + "DV.").
         }
 
         _executeCurrentManeuver().
@@ -50,7 +50,8 @@ function OrbitalController {
 			"Pitch", steer_to:pitch,
             "Yaw", steer_to:yaw,
             "Roll", steer_to:roll,
-			"Throttle", throttle_to
+			"Throttle", throttle_to,
+            "Burn time", _getBurnTimeForCurrentManeuver()
 		).
 	}
 
@@ -76,6 +77,13 @@ function OrbitalController {
         current_maneuver:update().
         set steer_to to current_maneuver:getDirection().
         set throttle_to to current_maneuver:getThrottle().
+    }
+
+    function _getBurnTimeForCurrentManeuver {
+        if current_maneuver = false {
+            return 0.
+        }
+        return current_maneuver:nextBurnRemainingTime().
     }
 
     function _logWithT {
