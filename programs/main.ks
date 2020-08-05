@@ -57,7 +57,7 @@ until program_finished {
 
     // go to orbit mode if we're already in a stable orbit or if the launch sequence was completed
     if (periapsis > 70000 and program_mode = PROGRAM_MODE_IDLE) or (launch_controller:isComplete() and program_mode = PROGRAM_MODE_LAUNCH) {
-        orbital_controller:setOrbitProfile(mission:getOrbitProfile()).
+        orbital_controller:setManeuvers(mission:getManeuvers()).
         set program_mode to PROGRAM_MODE_ORBIT.
     }
 
