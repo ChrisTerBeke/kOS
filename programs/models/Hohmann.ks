@@ -21,13 +21,6 @@ function Hohmann {
     local burn_started is false.
     local throttle_to is 0.
 
-    // calculate the total DeltaV needed for all burns in this transfer
-    function totalDeltaV {
-        local starting_to_transfer_delta_v is calculateDeltaV(current_orbit:getApoapsis(), transfer_orbit:getApoapsis(), transfer_orbit:getPeriapsis()).
-        local transfer_to_final_delta_v is calculateDeltaV(transfer_orbit:getApoapsis(), final_orbit:getApoApsis(), final_orbit:getPeriapsis()).
-        return starting_to_transfer_delta_v + transfer_to_final_delta_v.
-    }
-
     // get the approximate time needed to execute the upcoming burn
     function nextBurnRemainingTime {
         local burn_delta_v is calculateDeltaV(altitude, target_orbit:getApoapsis(), target_orbit:getPeriapsis()).
@@ -38,15 +31,11 @@ function Hohmann {
         return current_mode = ORBIT_MODE_FINAL.
     }
 
-    function start {
-        _planNextBurn().
-    }
-
     function update {
 
         local remaining_burn_time is nextBurnRemainingTime().
 
-        if remaining_burn_time < 0.05 {
+        if not burn_started and remaining_burn_time < 0.05 {
             _planNextBurn().
             return.
         }
@@ -97,10 +86,8 @@ function Hohmann {
     }
 
     return lexicon(
-        "totalDeltaV", totalDeltaV@,
         "nextBurnRemainingTime", nextBurnRemainingTime@,
         "isComplete", isComplete@,
-        "start", start@,
         "update", update@,
         "getDirection", getDirection@,
         "getThrottle", getThrottle@

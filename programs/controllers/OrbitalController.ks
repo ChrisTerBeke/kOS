@@ -1,3 +1,6 @@
+runOncePath("programs/models/Hohmann"). // #include "../models/Hohmann.ks"
+runOncePath("programs/models/WaitUntil"). // #include "../models/WaitUntil.ks"
+
 function OrbitalController {
 
     local is_enabled is false.
@@ -5,7 +8,7 @@ function OrbitalController {
 
     // maneuvers
     local maneuvers is queue().
-    local current_maneuver is false.
+    local current_maneuver is WaitUntil(time).
 
     // vehicle control variables
     local throttle_to is 0.
@@ -15,13 +18,11 @@ function OrbitalController {
         if not is_enabled {
             return.
         }
-
         // go to the next planned maneuver in the queue if the current one is done
-        if (current_maneuver:isComplete() or current_maneuver = false) and maneuvers:length > 0 {
+        if current_maneuver:isComplete() and maneuvers:length > 0 {
             set current_maneuver to maneuvers:pop().
             _logWithT("Executing next planned maneuver using " + current_maneuver:totalDeltaV() + "DV.").
         }
-
         _executeCurrentManeuver().
     }
 
@@ -63,7 +64,14 @@ function OrbitalController {
 
     function setManeuvers {
         parameter input_maneuvers.
-        set maneuvers to input_maneuvers.
+        maneuvers:clear().
+        for input_maneuver in input_maneuvers {
+            if input_maneuver["maneuver_type"] = "hohmann" {
+                // TODO: some more checking
+                local maneuver is Hohmann(input_maneuver["target_altitude"]).
+                maneuvers:push(maneuver).
+            }
+        }
     }
 
     function isComplete {
@@ -71,18 +79,12 @@ function OrbitalController {
     }
 
     function _executeCurrentManeuver {
-        if current_maneuver = false {
-            return.
-        }
         current_maneuver:update().
         set steer_to to current_maneuver:getDirection().
         set throttle_to to current_maneuver:getThrottle().
     }
 
     function _getBurnTimeForCurrentManeuver {
-        if current_maneuver = false {
-            return 0.
-        }
         return current_maneuver:nextBurnRemainingTime().
     }
 

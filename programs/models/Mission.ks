@@ -1,5 +1,3 @@
-runOncePath("programs/models/Hohmann"). // #include "./Hohmann.ks"
-
 function Mission {
 
     parameter input_lex is lexicon().
@@ -32,20 +30,12 @@ function Mission {
     }
 
     function getManeuvers {
-        local result is queue().
-
+        local result is list().
         if not input_lex:hasKey("maneuvers") {
             return result.
         }
-
-        for maneuver in input_lex["maneuvers"] {
-            if maneuver["maneuver_type"] = "hohmann" {
-                result:push(Hohmann(maneuver["target_altitude"])).
-            }
-            // TODO: better input checking
-        }
-        
-        return result.
+        // TODO: better input checking
+        return input_lex["maneuvers"].
     }
 
     return lexicon(
