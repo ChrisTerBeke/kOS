@@ -21,7 +21,7 @@ function OrbitalController {
         // go to the next planned maneuver in the queue if the current one is done
         if current_maneuver:isComplete() and maneuvers:length > 0 {
             set current_maneuver to maneuvers:pop().
-            _logWithT("Executing next planned maneuver using " + current_maneuver:totalDeltaV() + "DV.").
+            _logWithT("Executing next planned maneuver.").
         }
         _executeCurrentManeuver().
     }
