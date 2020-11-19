@@ -8,7 +8,7 @@ function OrbitalController {
 
     // maneuvers
     local maneuvers is queue().
-    local current_maneuver is WaitUntil(time).
+    local active_maneuver is WaitUntil(time).
 
     // vehicle control variables
     local throttle_to is 0.
@@ -18,12 +18,14 @@ function OrbitalController {
         if not is_enabled {
             return.
         }
+
         // go to the next planned maneuver in the queue if the current one is done
-        if current_maneuver:isComplete() and maneuvers:length > 0 {
-            set current_maneuver to maneuvers:pop().
+        if active_maneuver:isComplete() and maneuvers:length > 0 {
+            set active_maneuver to maneuvers:pop().
             _logWithT("Executing next planned maneuver.").
         }
-        _executeCurrentManeuver().
+
+        _executeActiveManeuver().
     }
 
     function setEnabled {
@@ -65,27 +67,30 @@ function OrbitalController {
     function setManeuvers {
         parameter input_maneuvers.
         maneuvers:clear().
+		// TODO: some more input checking
         for input_maneuver in input_maneuvers {
             if input_maneuver["maneuver_type"] = "hohmann" {
-                // TODO: some more checking
                 local maneuver is Hohmann(input_maneuver["target_altitude"]).
                 maneuvers:push(maneuver).
-            }
+            } else if input_maneuver["maneuver_type"] = "orbit_change" {
+				local maneuver is OrbitChange(input_maneuver["target_apoapsis"], input_maneuver["target_periapsis"]).
+				maneuvers:push(maneuver).
+			}
         }
     }
 
     function isComplete {
-        return current_maneuver:isComplete() and maneuvers:length = 0.
+        return active_maneuver:isComplete() and maneuvers:length = 0.
     }
 
-    function _executeCurrentManeuver {
-        current_maneuver:update().
-        set steer_to to current_maneuver:getDirection().
-        set throttle_to to current_maneuver:getThrottle().
+    function _executeActiveManeuver {
+        active_maneuver:update().
+        set steer_to to active_maneuver:getDirection().
+        set throttle_to to active_maneuver:getThrottle().
     }
 
     function _getBurnTimeForCurrentManeuver {
-        return current_maneuver:nextBurnRemainingTime().
+        return active_maneuver:nextBurnRemainingTime().
     }
 
     function _logWithT {

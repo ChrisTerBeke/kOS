@@ -1,61 +1,35 @@
 runOncePath("programs/models/Orbit"). // #include "./Orbit.ks"
-runOncePath("programs/helpers/CalculateDeltaV"). // #include "../helpers/CalculateDeltaV.ks"
+runOncePath("programs/models/OrbitChange"). // #include "./OrbitChange.ks"
 
 function Hohmann {
-    // TODO: split into 2 'orbit change burn' objects?
 
     parameter target_altitude.
+	// TODO: allow non-circular orbits
     // TODO: allow inclination change
 
-    local ORBIT_MODE_IDLE is -1.
-    local ORBIT_MODE_STARTING is 0.
-    local ORBIT_MODE_TRANSFER is 1.
-    local ORBIT_MODE_FINAL is 2.
-    local current_mode is ORBIT_MODE_IDLE.
-
-    local current_orbit is Orbit(apoapsis, periapsis, ship:orbit:inclination).
-    local transfer_orbit is Orbit(target_altitude, current_orbit:getApoapsis(), ship:orbit:inclination).
-    local final_orbit is Orbit(target_altitude, transfer_orbit:getApoapsis(), ship:orbit:inclination).
-
-    local target_orbit is current_orbit.
-    local burn_started is false.
+	// a Hohmann transfer is essentially 2 orbit change burns
+	local maneuvers is queue(
+		OrbitChange(apoapsis, target_altitude),
+		OrbitChange(target_altitude, target_altitude)
+	).
+	local active_maneuver is WaitUntil(time).
     local throttle_to is 0.
 
-    // get the approximate time needed to execute the upcoming burn
-    function nextBurnRemainingTime {
-        local burn_delta_v is calculateDeltaV(altitude, target_orbit:getApoapsis(), target_orbit:getPeriapsis()).
-        return calculateRemainingBurnTime(burn_delta_v).
+    function isComplete {
+		return active_maneuver:isComplete() and maneuvers:length = 0.
     }
 
-    function isComplete {
-        return current_mode = ORBIT_MODE_FINAL.
-    }
+	function nextBurnRemainingTime {
+		return active_maneuver:nextBurnRemainingTime().
+	}
 
     function update {
-
-        local remaining_burn_time is nextBurnRemainingTime().
-
-        if not burn_started and remaining_burn_time < 0.05 {
-            _planNextBurn().
-            return.
+		// go to the next planned maneuver in the queue if the current one is done
+        if active_maneuver:isComplete() and maneuvers:length > 0 {
+            set active_maneuver to maneuvers:pop().
         }
 
-        // start burning at 50% of our total burn time before apoapsis for highest precision
-        if eta:apoapsis <= (remaining_burn_time / 2) and not burn_started {
-            set throttle_to to 1.
-            set burn_started to true.
-        }
-
-        // reduce throttle towards end of burn to improve accuracy
-        if burn_started and abs(ship:orbit:eccentricity - target_orbit:getEccentricity()) < 0.02 {
-            set throttle_to to 0.1.
-        }
-
-        if burn_started and remaining_burn_time < 0.05 {
-            set throttle_to to 0.
-            set burn_started to false.
-            _planNextBurn().
-        }
+        _executeActiveManeuver().
     }
 
     function getDirection {
@@ -66,24 +40,10 @@ function Hohmann {
         return throttle_to.
     }
 
-    function _planNextBurn {
-        if current_mode = ORBIT_MODE_FINAL {
-            return.
-        }
-        set current_mode to current_mode + 1.
-
-        // re-calculate orbits as they might have changed depending on actual current orbit
-        set current_orbit to Orbit(apoapsis, periapsis, ship:orbit:inclination).
-        set transfer_orbit to Orbit(target_altitude, current_orbit:getApoapsis(), ship:orbit:inclination).
-        set final_orbit to Orbit(target_altitude, transfer_orbit:getApoapsis(), ship:orbit:inclination).
-
-        // set the target orbit for the new mode (idle -> starting -> transfer -> final)
-        if current_mode = ORBIT_MODE_STARTING {
-            set target_orbit to transfer_orbit.
-        } else if current_mode = ORBIT_MODE_TRANSFER {
-            set target_orbit to final_orbit.
-        }
-    }
+	function _executeActiveManeuver {
+		active_maneuver:update().
+        set throttle_to to active_maneuver:getThrottle().
+	}
 
     return lexicon(
         "nextBurnRemainingTime", nextBurnRemainingTime@,
