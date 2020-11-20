@@ -26,10 +26,6 @@ function OrbitChange {
         return calculateRemainingBurnTime(burn_delta_v).
     }
 
-	function getTargetOrbit {
-		return final_orbit.
-	}
-
 	function isComplete {
 		return current_mode = ORBIT_MODE_FINAL.
 	}
@@ -85,7 +81,6 @@ function OrbitChange {
 
 	return lexicon(
 		"nextBurnRemainingTime", nextBurnRemainingTime@,
-		"getTargetOrbit", getTargetOrbit@,
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
