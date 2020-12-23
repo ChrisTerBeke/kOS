@@ -43,6 +43,7 @@ function AbortController {
             unlock throttle.
             sas on.
             abort on.
+            // TODO: blow up ship
         }
     }
 

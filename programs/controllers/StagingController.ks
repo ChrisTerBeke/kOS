@@ -50,6 +50,10 @@ function StagingController {
         return messages.
     }
 
+    function isStaging {
+        return staging_in_progress.
+    }
+
     function _checkStaging {
         local flameout is checkEngineFlameOut() and auto_detect_staging.
         local no_thrust is ship:maxthrust < 0.01 and auto_detect_staging.
@@ -79,6 +83,7 @@ function StagingController {
         "doAbort", doAbort@,
         "setAutoDetectStaging", setAutoDetectStaging@,
         "setForceStaging", setForceStaging@,
-        "getMessages", getMessages@
+        "getMessages", getMessages@,
+        "isStaging", isStaging@
     ).
 }

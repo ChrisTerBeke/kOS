@@ -176,6 +176,11 @@ function LaunchController {
     function _gravityTurn {
         // TODO: throttling around max Q
 
+        // HACK: do not turn if we're about to stage (to prevent spinning while staging)
+        if stage:LiquidFuel > 0.0 and stage:LiquidFuel < 150 {
+            return.
+        }
+
         // calculate pitch
         local steer_to_pitch is max(90 - (((altitude - turn_start_altitude) / (turn_end_altitude - turn_start_altitude)) ^ turn_exponent * 90), turn_end_pitch_degrees).
 

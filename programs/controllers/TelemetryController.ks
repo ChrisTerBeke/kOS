@@ -12,7 +12,7 @@ function TelemetryController {
             return.
         }
         _printMessages().
-        _printTelementry().
+        _printTelemetry().
     }
 
     function setEnabled {
@@ -49,7 +49,7 @@ function TelemetryController {
         }
     }
 
-    function _printTelementry {
+    function _printTelemetry {
         _printTelemetryLine("Altitude: " + ship:altitude, telemetry_top_row).
         _printTelemetryLine("Apoapsis: " + ship:orbit:apoapsis, telemetry_top_row + 1).
         _printTelemetryLine("  ETA: " + eta:apoapsis, telemetry_top_row + 2).
