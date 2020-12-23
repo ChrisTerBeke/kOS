@@ -10,7 +10,7 @@
                 "roll",
                 0,
                 "max_launch_stage",
-                1,
+                2,
                 "force_staging_at_edge_of_atmosphere",
                 true
             ],
