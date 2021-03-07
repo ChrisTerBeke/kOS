@@ -18,7 +18,7 @@ local launch_controller is LaunchController().
 local orbital_controller is OrbitalController().
 local staging_controller is StagingController().
 local steering_controller is SteeringController().
-local telemetry_controller is TelemetryController().
+local telemetry_controller is TelemetryController(mission_name).
 local throttle_controller is ThrottleController().
 
 // program modes
@@ -85,7 +85,7 @@ until program_finished {
         staging_controller:setAutoDetectStaging(allow_staging and launch_mode > LAUNCH_MODE_VERTICAL_ASCENT).
         staging_controller:setForceStaging(allow_staging and is_outside_atmosphere and mission:stageAtEdgeOfAtmosphere()).
 		steering_controller:setDirection(launch_controller:getDirection()).
-		telemetry_controller:setCustomTelemetry(launch_controller:getTelemetry()).
+		telemetry_controller:setTelemetry(launch_controller:getTelemetry()).
 		throttle_controller:setThrottle(launch_controller:getThrottle()).
     }
 
@@ -95,7 +95,7 @@ until program_finished {
         abort_controller:setAbortOnInsufficientThrust(false).
         staging_controller:setAutoDetectStaging(false).
 		steering_controller:setDirection(orbital_controller:getDirection()).
-		telemetry_controller:setCustomTelemetry(orbital_controller:getTelemetry()).
+		telemetry_controller:setTelemetry(orbital_controller:getTelemetry()).
 		throttle_controller:setThrottle(orbital_controller:getThrottle()).
 	}
 

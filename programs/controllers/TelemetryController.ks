@@ -1,11 +1,20 @@
 function TelemetryController {
 
+    parameter mission_name.
+
     local is_enabled is false.
     local message_list_top_row is 0.
     local max_messages_on_screen is 5.
     local telemetry_top_row is max_messages_on_screen + 1.
-	local custom_telemetry is lexicon().
+	local telemetry is lexicon().
     local message_list is list().
+
+    // TODO: queue telemetry locally and copy to archive periodically to simulate data downlink
+    local archive_volume is volume(0).
+    switch to archive_volume.
+    local file_name is "logs/telemetry/" + mission_name + "/" + time:seconds + ".csv".
+    archive_volume:create(file_name).
+    local telemetry_downlink is archive_volume:open(file_name).
 
     function update {
         if not is_enabled {
@@ -13,6 +22,7 @@ function TelemetryController {
         }
         _printMessages().
         _printTelemetry().
+        _logTelemetry().
     }
 
     function setEnabled {
@@ -35,9 +45,9 @@ function TelemetryController {
         }
     }
 
-	function setCustomTelemetry {
+	function setTelemetry {
 		parameter telemetry_lex.
-		set custom_telemetry to telemetry_lex.
+		set telemetry to telemetry_lex.
 	}
 
     function _printMessages {
@@ -50,22 +60,16 @@ function TelemetryController {
     }
 
     function _printTelemetry {
-        _printTelemetryLine("Altitude: " + ship:altitude, telemetry_top_row).
-        _printTelemetryLine("Apoapsis: " + ship:orbit:apoapsis, telemetry_top_row + 1).
-        _printTelemetryLine("  ETA: " + eta:apoapsis, telemetry_top_row + 2).
-        _printTelemetryLine("Periapsis: " + ship:orbit:periapsis, telemetry_top_row + 3).
-        _printTelemetryLine("  ETA: " + eta:periapsis, telemetry_top_row + 4).
-        _printTelemetryLine("Eccentricity: " + ship:orbit:eccentricity, telemetry_top_row + 5).
-        _printTelemetryLine("Inclination: " + ship:orbit:inclination, telemetry_top_row + 6).
-
-		// print the custom telemetry items
-		// we use an iterator on the lexicon key so we can calculate the correct row to print on
-		local custom_telemetry_iter is custom_telemetry:keys:iterator.
-		until not custom_telemetry_iter:next {
-			local index is custom_telemetry_iter:index.
-			local key is custom_telemetry_iter:value.
-            _printTelemetryLine(key + ": " + custom_telemetry[key], telemetry_top_row + 7 + index).
-		}
+        // print all telemetry items
+        // we use an iterator so we can calculate the correct row to print on
+        local telemetry_iterator is telemetry:keys:iterator.
+        until not telemetry_iterator:next {
+            local index is telemetry_iterator:index.
+            local key is telemetry_iterator:value.
+            local value is telemetry[key].
+            _printTelemetryLine(key + ": " + value, telemetry_top_row + index).
+            log key + ": " + value to "telemetry.csv".
+        }
     }
 
     function _printTelemetryLine {
@@ -75,11 +79,16 @@ function TelemetryController {
         print text at (0, line_number).
     }
 
+    function _logTelemetry {
+        local telemetry_line is telemetry:values:join(",").
+        telemetry_downlink:writeln(telemetry_line).
+    }
+
     return lexicon(
         "update", update@,
         "setEnabled", setEnabled@,
         "addMessage", addMessage@,
         "addMessages", addMessages@,
-		"setCustomTelemetry", setCustomTelemetry@
+		"setTelemetry", setTelemetry@
     ).
 }

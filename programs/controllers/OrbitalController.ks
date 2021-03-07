@@ -49,12 +49,26 @@ function OrbitalController {
 	}
 
 	function getTelemetry {
+        local burn_time_remaining is  _getBurnTimeForCurrentManeuver().
 		return lexicon(
+            // standard
+            "Time", time:seconds,
+            "Altitude", ship:altitude,
+            "Ground speed", ship:groundspeed,
+            "Vertical speed", ship:verticalspeed,
+            "Delta V", ship:deltav:vacuum,
+            "Apoapsis", ship:orbit:apoapsis,
+            "ETA apoapsis", eta:apoapsis,
+            "Periapsis", ship:orbit:periapsis,
+            "ETA periapsis", eta:periapsis,
+            "Eccentricity", ship:orbit:eccentricity,
+            "Inclination", ship:orbit:inclination,
+            // controller-specific
 			"Pitch", steer_to:pitch,
             "Yaw", steer_to:yaw,
             "Roll", steer_to:roll,
 			"Throttle", throttle_to,
-            "Burn time", _getBurnTimeForCurrentManeuver()
+            "Burn time", burn_time_remaining
 		).
 	}
 

@@ -106,12 +106,24 @@ function LaunchController {
 
 	function getTelemetry {
 		return lexicon(
+            // standard
+            "Time", time:seconds,
+            "Altitude", ship:altitude,
+            "Ground speed", ship:groundspeed,
+            "Vertical speed", ship:verticalspeed,
+            "Delta V", ship:deltav:vacuum,
+            "Apoapsis", ship:orbit:apoapsis,
+            "ETA apoapsis", eta:apoapsis,
+            "Periapsis", ship:orbit:periapsis,
+            "ETA periapsis", eta:periapsis,
+            "Eccentricity", ship:orbit:eccentricity,
+            "Inclination", ship:orbit:inclination,
+            // controller-specific
 			"Pitch", steer_to:pitch,
             "Yaw", steer_to:yaw,
             "Roll", steer_to:roll,
 			"Throttle", throttle_to,
-            "Burn time", burn_time_remaining,
-            "Delta V", burn_delta_v
+            "Burn time", burn_time_remaining
 		).
 	}
 
