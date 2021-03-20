@@ -1,0 +1,26 @@
+{
+    "entries": [
+        "launch",
+        {
+            "entries": [
+                "target_altitude",
+                120000,
+                "target_inclination",
+                0,
+                "roll",
+                90,
+                "max_launch_stage",
+                0,
+                "force_staging_at_edge_of_atmosphere",
+                false
+            ],
+            "$type": "kOS.Safe.Encapsulation.Lexicon"
+        },
+        "maneuvers",
+        {
+            "items": [],
+            "$type": "kOS.Safe.Encapsulation.ListValue"
+        }
+    ],
+    "$type": "kOS.Safe.Encapsulation.Lexicon"
+}
