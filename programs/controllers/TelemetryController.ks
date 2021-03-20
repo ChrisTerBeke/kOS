@@ -68,7 +68,6 @@ function TelemetryController {
             local key is telemetry_iterator:value.
             local value is telemetry[key].
             _printTelemetryLine(key + ": " + value, telemetry_top_row + index).
-            log key + ": " + value to "telemetry.csv".
         }
     }
 
