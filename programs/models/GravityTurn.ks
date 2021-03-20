@@ -38,7 +38,7 @@ function GravityTurn {
         local flameout is checkEngineFlameOut().
         local no_thrust is ship:maxthrust < 0.01.
         if (flameout or no_thrust) and not staging_in_progress {
-            set stage_at_time to time:seconds + 2.
+            set stage_at_time to time:seconds + stage_separation_delay.
             set staging_in_progress to true.
         }
         if time:seconds >= stage_at_time and staging_in_progress {
