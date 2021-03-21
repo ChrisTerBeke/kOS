@@ -9,8 +9,9 @@ function GravityTurn {
     parameter gravity_turn_start_altitude.
     parameter target_altitude.
     parameter target_inclination.
-    parameter launch_azimuth.
 
+    local launch_location is ship:geoPosition.
+    local launch_azimuth is calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
     local turn_end_pitch_degrees is 10.
     local turn_end_altitude is 0.
     local turn_exponent is 0.

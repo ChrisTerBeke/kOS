@@ -9,7 +9,7 @@ function SequenceController {
 
     // TODO: load parameters from config file
     local launch_altitude is 120000.
-    local launch_inclination is 0.
+    local launch_inclination is 51.2.
     local launch_roll is 0.
     local final_altitude is 140000.
 
