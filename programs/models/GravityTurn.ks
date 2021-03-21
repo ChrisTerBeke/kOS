@@ -70,6 +70,7 @@ function GravityTurn {
         local tmp_heading is calculateHeading(steer_to_direction, steer_to_pitch, roll).
 
         // limit angle of attack depending on aerodynamic pressure
+        // TODO: throttle down at max Q
         if ship:q > 0 {
             set angle_limit to max(3, min(90, 5 * ln(0.9 / ship:q))).
         } else {
