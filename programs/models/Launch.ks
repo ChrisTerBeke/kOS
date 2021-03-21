@@ -17,14 +17,12 @@ function Launch {
     local roll_start_altitude is 200.
     local gravity_turn_start_altitude is 1500.
     local launch_countdown_seconds is 10.
-    local launch_location is ship:geoPosition.
-    local launch_azimuth is calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
 
     // a launch consists of several maneuvers executed in sequence
     local maneuvers is queue(
         CountDown(launch_countdown_seconds),
         VerticalAscent(roll, roll_start_altitude, gravity_turn_start_altitude),
-        GravityTurn(roll, gravity_turn_start_altitude, target_altitude, target_inclination, launch_azimuth),
+        GravityTurn(roll, gravity_turn_start_altitude, target_altitude, target_inclination),
         Circularize(target_altitude)
     ).
     local active_maneuver is WaitUntil(time).
