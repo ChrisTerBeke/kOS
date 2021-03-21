@@ -32,10 +32,15 @@ function VerticalAscent {
         return throttle_to.
     }
 
+    function getName {
+        return "Vertical ascent".
+    }
+
     return lexicon(
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }

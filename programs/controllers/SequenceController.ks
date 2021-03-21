@@ -59,7 +59,8 @@ function SequenceController {
 
     function getTelemetry {
         return lexicon(
-            "Time", time:seconds,
+            "T", missionTime,
+            "Maneuver", active_maneuver:getName(),
             "Altitude", ship:altitude,
             "Ground speed", ship:groundspeed,
             "Vertical speed", ship:verticalspeed,

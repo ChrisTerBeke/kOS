@@ -26,12 +26,17 @@ function WaitUntil {
         return 0.
     }
 
+    function getName {
+        return "Wait until".
+    }
+
     return lexicon(
         "totalDeltaV", totalDeltaV@,
         "nextBurnRemainingTime", nextBurnRemainingTime@,
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }

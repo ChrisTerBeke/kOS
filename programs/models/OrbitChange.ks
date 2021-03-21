@@ -20,26 +20,21 @@ function OrbitChange {
 	local burn_started is false.
     local throttle_to is 0.
 
-	// get the approximate time needed to execute the upcoming burn
-    function nextBurnRemainingTime {
-        local burn_delta_v is calculateDeltaV(altitude, active_orbit:getApoapsis(), active_orbit:getPeriapsis()).
-        return calculateRemainingBurnTime(burn_delta_v).
-    }
-
 	function isComplete {
 		return current_mode = ORBIT_MODE_FINAL.
 	}
 
 	function update {
-		local remaining_burn_time is nextBurnRemainingTime().
+		local burn_delta_v is calculateDeltaV(altitude, active_orbit:getApoapsis(), active_orbit:getPeriapsis()).
+		local burn_time_remaining is calculateRemainingBurnTime(burn_delta_v).
 
-		if not burn_started and remaining_burn_time < 0.05 {
+		if not burn_started and burn_time_remaining < 0.05 {
 			_planNextBurn().
 			return.
 		}
 
         // start burning at 50% of our total burn time before apoapsis for highest precision
-		if eta:apoapsis <= (remaining_burn_time / 2) and not burn_started {
+		if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
 			set throttle_to to 1.
             set burn_started to true.
 		}
@@ -49,7 +44,7 @@ function OrbitChange {
             set throttle_to to 0.1.
         }
 
-		if burn_started and remaining_burn_time < 0.05 {
+		if burn_started and burn_time_remaining < 0.05 {
             set throttle_to to 0.
             set burn_started to false.
             _planNextBurn().
@@ -80,7 +75,6 @@ function OrbitChange {
 	}
 
 	return lexicon(
-		"nextBurnRemainingTime", nextBurnRemainingTime@,
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
