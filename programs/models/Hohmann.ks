@@ -9,7 +9,7 @@ function Hohmann {
 
 	// a Hohmann transfer is essentially 2 orbit change burns
 	local maneuvers is queue(
-		OrbitChange(ship:apoapsis, target_altitude),
+		OrbitChange(apoapsis, target_altitude),
 		OrbitChange(target_altitude, target_altitude)
 	).
 	local active_maneuver is WaitUntil(time).
