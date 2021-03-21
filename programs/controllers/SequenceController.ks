@@ -78,11 +78,6 @@ function SequenceController {
 		).
     }
 
-    function getMessages {
-        // TODO: implement this
-        return list().
-    }
-
     function _executeActiveManeuver {
         active_maneuver:update().
         set throttle_to to active_maneuver:getThrottle().
@@ -96,7 +91,6 @@ function SequenceController {
         "doAbort", doAbort@,
         "getDirection", getDirection@,
         "getThrottle", getThrottle@,
-        "getTelemetry", getTelemetry@,
-        "getMessages", getMessages@
+        "getTelemetry", getTelemetry@
     ).
 }
