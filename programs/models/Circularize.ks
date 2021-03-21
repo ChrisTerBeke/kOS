@@ -1,17 +1,18 @@
 runOncePath("programs/helpers/CalculateDeltaV").  // #include "../helpers/CalculateDeltaV.ks"
 runOncePath("programs/helpers/CalculateRemainingBurnTime").  // #include "../helpers/CalculateRemainingBurnTime.ks"
+runOncePath("programs/helpers/DebugLog").  // #include "../helpers/DebugLog.ks"
 
 function Circularize {
 
     parameter target_altitude.
 
     local burn_started is false.
-    local steer_to is ship:prograde.
+    local burn_finished is false.
+    local fairings_separated is false.
     local throttle_to is 0.
 
     function isComplete {
-        // TODO: maybe separate boolean is needed?
-        return ship:periapsis >= target_altitude.
+        return burn_finished.
     }
     
     function update {
@@ -22,6 +23,7 @@ function Circularize {
         if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
             set throttle_to to 1.
             set burn_started to true.
+            debugLog("Starting circularization burn").
         }
 
         // reduce throttle towards end of burn to improve accuracy
@@ -32,21 +34,36 @@ function Circularize {
         // cut engines at end of burn
         if burn_started and burn_time_remaining <= 0 {
             set throttle_to to 0.
+            set burn_finished to true.
+            debugLog("Finished circularization burn").
+        }
+
+        // separate fairings when out of atmosphere
+        // TODO: do not use a stage for this
+        if ship:altitude > ship:body:atm:height and not fairings_separated {
+            stage.
+            set fairings_separated to true.
+            debugLog("Fairing separation").
         }
     }
 
     function getDirection {
-        return steer_to.
+        return ship:prograde.
     }
 
     function getThrottle {
         return throttle_to.
     }
 
+    function getName {
+        return "Circularize".
+    }
+
     return lexicon(
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }

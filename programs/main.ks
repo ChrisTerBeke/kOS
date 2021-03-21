@@ -73,7 +73,6 @@ until program_finished {
 
     // log telemetry
     telemetry_controller:setTelemetry(sequence_controller:getTelemetry()).
-    telemetry_controller:addMessages(sequence_controller:getMessages()).
 
     // update all controllers
     abort_controller:update().

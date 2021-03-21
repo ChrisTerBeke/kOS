@@ -1,5 +1,6 @@
 runOncePath("programs/helpers/CalculateHeading").  // #include "../helpers/CalculateHeading.ks"
 runOncePath("programs/helpers/CheckEngineFlameOut").  // #include "../helpers/CheckEngineFlameOut.ks"
+runOncePath("programs/helpers/DebugLog").  // #include "../helpers/DebugLog.ks"
 runOncePath("programs/helpers/GetThrustForStage").  // #include "../helpers/GetThrustForStage.ks"
 
 function GravityTurn {
@@ -10,11 +11,12 @@ function GravityTurn {
     parameter target_inclination.
     parameter launch_azimuth.
 
-    local gravity_turn_end_pitch_degrees is 10.
-    local steer_to is calculateHeading(90, 90, roll).
-    local throttle_to is 1.
+    local turn_end_pitch_degrees is 10.
     local turn_end_altitude is 0.
     local turn_exponent is 0.
+    local turn_finished is false.
+    local steer_to is calculateHeading(90, 90, roll).
+    local throttle_to is 1.
 
     // auto-staging
     local staging_in_progress is false.
@@ -22,7 +24,7 @@ function GravityTurn {
     local stage_separation_delay is 2.
 
     function isComplete {
-        return ship:apoapsis >= target_altitude.
+        return turn_finished.
     }
 
     function update {
@@ -32,6 +34,7 @@ function GravityTurn {
             local launch_twr is getThrustForStage() / (ship:mass * ship:body:mu / (altitude + ship:body:radius) ^ 2).
             set turn_end_altitude to (0.128 * ship:body:atm:height * launch_twr) + (0.5 * ship:body:atm:height).
             set turn_exponent to max(1 / (2.5 * launch_twr - 1.7), 0.25).
+            debugLog("Pitch program started").
         }
 
         // check auto-staging
@@ -40,6 +43,7 @@ function GravityTurn {
         if (flameout or no_thrust) and not staging_in_progress {
             set stage_at_time to time:seconds + stage_separation_delay.
             set staging_in_progress to true.
+            debugLog("Staging...").
         }
         if time:seconds >= stage_at_time and staging_in_progress {
             stage.
@@ -52,7 +56,7 @@ function GravityTurn {
         }
 
         // calculate pitch
-        local steer_to_pitch is max(90 - (((altitude - gravity_turn_start_altitude) / (turn_end_altitude - gravity_turn_start_altitude)) ^ turn_exponent * 90), gravity_turn_end_pitch_degrees).
+        local steer_to_pitch is max(90 - (((altitude - gravity_turn_start_altitude) / (turn_end_altitude - gravity_turn_start_altitude)) ^ turn_exponent * 90), turn_end_pitch_degrees).
     
         // calculate heading
         if abs(ship:orbit:inclination - abs(target_inclination)) > 2 {
@@ -86,9 +90,11 @@ function GravityTurn {
             set throttle_to to 0.1.
         }
 
-        // trottle off when target apoapsis is reached
+        // throttle off when target apoapsis is reached
         if ship:apoapsis >= target_altitude {
             set throttle_to to 0.
+            set turn_finished to true.
+            debugLog("Apoapsis reached").
         }
     }
 
@@ -100,10 +106,15 @@ function GravityTurn {
         return throttle_to.
     }
 
+    function getName {
+        return "Gravity turn".
+    }
+
     return lexicon(
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }

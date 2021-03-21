@@ -50,6 +50,10 @@ function Launch {
         return throttle_to.
     }
 
+    function getName {
+        return "Launch - " + active_maneuver:getName().
+    }
+
     function _executeActiveManeuver {
         active_maneuver:update().
         set throttle_to to active_maneuver:getThrottle().
@@ -60,6 +64,7 @@ function Launch {
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }

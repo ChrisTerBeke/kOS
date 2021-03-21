@@ -1,4 +1,5 @@
 runOncePath("programs/helpers/CalculateUpDirection").  // #include "../helpers/CalculateUpDirection.ks"
+runOncePath("programs/helpers/DebugLog").  // #include "../helpers/DebugLog.ks"
 runOncePath("programs/helpers/ReleaseLaunchClamps").  // #include "../helpers/ReleaseLaunchClamps.ks"
 
 function CountDown {
@@ -19,6 +20,7 @@ function CountDown {
         // calculate launch time once
         if launch_time = 0 {
             set launch_time to time:seconds + countdown_from.
+            debugLog("Launch time target " + launch_time).
         }
 
         local time_to_launch is launch_time - time:seconds.
@@ -26,11 +28,13 @@ function CountDown {
         if time_to_launch <= 3 and throttle_to < 1 {
             set throttle_to to 1.
             stage. // start engines
+            debugLog("Engine ignition").
         }
 
         if time_to_launch <= 0 {
             releaseLaunchClamps().
             set lift_off to true.
+            debugLog("Lift off").
         }
     }
 
@@ -42,10 +46,15 @@ function CountDown {
         return throttle_to.
     }
 
+    function getName {
+        return "Countdown".
+    }
+
     return lexicon(
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }

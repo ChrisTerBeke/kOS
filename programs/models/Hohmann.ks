@@ -9,7 +9,7 @@ function Hohmann {
 
 	// a Hohmann transfer is essentially 2 orbit change burns
 	local maneuvers is queue(
-		OrbitChange(apoapsis, target_altitude),
+		OrbitChange(ship:apoapsis, target_altitude),
 		OrbitChange(target_altitude, target_altitude)
 	).
 	local active_maneuver is WaitUntil(time).
@@ -18,10 +18,6 @@ function Hohmann {
     function isComplete {
 		return active_maneuver:isComplete() and maneuvers:length = 0.
     }
-
-	function nextBurnRemainingTime {
-		return active_maneuver:nextBurnRemainingTime().
-	}
 
     function update {
 		// go to the next planned maneuver in the queue if the current one is done
@@ -39,16 +35,20 @@ function Hohmann {
         return throttle_to.
     }
 
+    function getName {
+        return "Hohmann".
+    }
+
 	function _executeActiveManeuver {
 		active_maneuver:update().
         set throttle_to to active_maneuver:getThrottle().
 	}
 
     return lexicon(
-        "nextBurnRemainingTime", nextBurnRemainingTime@,
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
     ).
 }
