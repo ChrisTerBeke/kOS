@@ -26,17 +26,9 @@ function InputController {
         set is_enabled to value.
     }
 
-    function getMissionProfile {
-        parameter mission_profile_file_name.
-        // TODO: write custom de-serializer to improve configuration file readibility
-        local mission_profile is readJson("0:/programs/missions/" + mission_profile_file_name).
-        return mission_profile.
-    }
-
     return lexicon(
         "update", update@,
         "setEnabled", setEnabled@,
-        "getMissionProfile", getMissionProfile@,
         "enterPressed", enterPressed@
     ).
 }

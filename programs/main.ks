@@ -4,15 +4,16 @@ runOncePath("programs/controllers/SequenceController"). // #include "controllers
 runOncePath("programs/controllers/SteeringController"). // #include "controllers/SteeringController.ks"
 runOncePath("programs/controllers/TelemetryController"). // #include "controllers/TelemetryController.ks"
 runOncePath("programs/controllers/ThrottleController"). // #include "controllers/ThrottleController.ks"
-runOncePath("programs/models/Mission"). // #include "models/Mission.ks"
+runOncePath("programs/models/MissionConfig"). // #include "models/MissionConfig.ks"
 
 // mission config file name
 parameter mission_name.
+local mission_config is MissionConfig(mission_name).
 
 // create controllers
 local abort_controller is AbortController().
 local input_controller is InputController().
-local sequence_controller is SequenceController().
+local sequence_controller is SequenceController(mission_config).
 local steering_controller is SteeringController().
 local telemetry_controller is TelemetryController(mission_name).
 local throttle_controller is ThrottleController().
@@ -24,7 +25,7 @@ global PROGRAM_MODE_ABORT is 999.
 local program_mode is PROGRAM_MODE_IDLE.
 local program_finished is false.
 
-// configure abort modes
+// configure abort actions
 // TODO: abort detection
 // local detect_loss_of_control_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
 // local detect_insufficient_thrust_launch_modes is list(LAUNCH_MODE_VERTICAL_ASCENT, LAUNCH_MODE_GRAVITY_TURN).
@@ -36,17 +37,12 @@ on abort {
 	throttle_controller:doAbort().
 }
 
-// configure the mission
-// TODO: better mission configuration file format (yaml?)
-local mission is Mission(input_controller:getMissionProfile(mission_name)).
-
 // main loop
 clearScreen.
 until program_finished {
 
     // start mission sequence on enter
     if input_controller:enterPressed() and program_mode = PROGRAM_MODE_IDLE {
-        // TODO: configure sequence from mission config
         set program_mode to PROGRAM_MODE_ACTIVE.
     }
 
