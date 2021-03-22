@@ -7,15 +7,15 @@ runOncePath("programs/controllers/ThrottleController"). // #include "controllers
 runOncePath("programs/models/MissionConfig"). // #include "models/MissionConfig.ks"
 
 // mission config file name
-parameter mission_name.
-local mission_config is MissionConfig(mission_name).
+parameter mission_file_name.
+local mission_config is MissionConfig(mission_file_name).
 
 // create controllers
 local abort_controller is AbortController().
 local input_controller is InputController().
 local sequence_controller is SequenceController(mission_config).
 local steering_controller is SteeringController().
-local telemetry_controller is TelemetryController(mission_name).
+local telemetry_controller is TelemetryController(mission_config:getName()).
 local throttle_controller is ThrottleController().
 
 // program modes
