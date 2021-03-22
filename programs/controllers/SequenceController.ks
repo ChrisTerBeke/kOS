@@ -1,23 +1,12 @@
 runOncePath("programs/helpers/CalculateUpDirection").  // #include "../helpers/CalculateUpDirection.ks"
-runOncePath("programs/models/Hohmann").  // #include "../models/Hohmann.ks"
-runOncePath("programs/models/Launch").  // #include "../models/Launch.ks"
 runOncePath("programs/models/WaitUntil").  // #include "../models/WaitUntil.ks"
 
 function SequenceController {
 
+    parameter mission_config.
+
     local is_enabled is false.
-
-    // TODO: load parameters from config file
-    local launch_altitude is 120000.
-    local launch_inclination is 51.2.
-    local launch_roll is 0.
-    local final_altitude is 140000.
-
-    // TODO: load maneuvers from config file
-    local maneuvers is queue(
-        Launch(launch_altitude, launch_inclination, launch_roll),
-        Hohmann(final_altitude)
-    ).
+    local maneuvers is mission_config:getManeuvers().
     local active_maneuver is WaitUntil(time).
     local throttle_to is 0.
     local steer_to is calculateUpDirection().
