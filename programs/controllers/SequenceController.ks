@@ -3,10 +3,10 @@ runOncePath("programs/models/WaitUntil").  // #include "../models/WaitUntil.ks"
 
 function SequenceController {
 
-    parameter mission_config.
+    parameter mission.
 
     local is_enabled is false.
-    local maneuvers is mission_config:getManeuvers().
+    local maneuvers is mission:getManeuvers().
     local active_maneuver is WaitUntil(time).
     local throttle_to is 0.
     local steer_to is calculateUpDirection().
@@ -23,10 +23,10 @@ function SequenceController {
         if not is_enabled {
             return.
         }
+        _executeActiveManeuver().
         if active_maneuver:isComplete() and maneuvers:length > 0 {
             set active_maneuver to maneuvers:pop().
         }
-        _executeActiveManeuver().
     }
 
     function isComplete {

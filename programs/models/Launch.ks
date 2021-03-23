@@ -34,10 +34,10 @@ function Launch {
     }
 
     function update {
+        _executeActiveManeuver().
         if active_maneuver:isComplete() and maneuvers:length > 0 {
             set active_maneuver to maneuvers:pop().
         }
-        _executeActiveManeuver().
     }
 
     function getDirection {
