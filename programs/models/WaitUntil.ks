@@ -14,12 +14,13 @@ function WaitUntil {
         return time:seconds >= target_time:seconds.
     }
 
-    function update {
-        // nothing to do here
-    }
+    function update {}
 
     function getDirection {
-        return ship:orbit:prograde.
+        if ship:altitude > ship:body:atm:height {
+            return prograde.
+        }
+        return srfPrograde.
     }
 
     function getThrottle {

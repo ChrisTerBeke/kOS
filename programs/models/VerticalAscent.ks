@@ -16,11 +16,11 @@ function VerticalAscent {
     }
 
     function update {
-        if ship:altitude > roll_start_altitude {
+        if altitude > roll_start_altitude {
             // todo: take target inclination into account when rolling
             set steer_to to calculateHeading(90, 90, roll).
         }
-        if ship:altitude > gravity_turn_start_altitude {
+        if altitude > gravity_turn_start_altitude {
             set start_gravity_turn to true.
         }
     }
