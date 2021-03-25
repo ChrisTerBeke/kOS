@@ -1,21 +1,27 @@
+runOncePath("programs/helpers/CalculateUpDirection").  // #include "../helpers/CalculateUpDirection.ks"
+
 function Hover {
 
     parameter target_altitude.
 
+    local throttle_to is 1.
+
     function isComplete {
-        // TODO
+        return false.
     }
 
     function update {
+
+
         // TODO
     }
 
     function getDirection {
-        // TODO
+        return calculateUpDirection().
     }
 
     function getThrottle {
-        // TODO
+        return throttle_to.
     }
 
     function getName {
