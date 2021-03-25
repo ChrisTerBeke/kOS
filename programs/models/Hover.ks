@@ -1,26 +1,25 @@
-function WaitUntil {
+function Hover {
 
-    parameter target_time.
+    parameter target_altitude.
 
     function isComplete {
-        return time:seconds >= target_time:seconds.
+        // TODO
     }
 
-    function update {}
+    function update {
+        // TODO
+    }
 
     function getDirection {
-        if ship:altitude > ship:body:atm:height {
-            return prograde.
-        }
-        return srfPrograde.
+        // TODO
     }
 
     function getThrottle {
-        return 0.
+        // TODO
     }
 
     function getName {
-        return "Wait until".
+        return "Hover".
     }
 
     return lexicon(
