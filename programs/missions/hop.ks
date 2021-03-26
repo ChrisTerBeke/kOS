@@ -5,6 +5,6 @@ global MISSION_CONFIG is lexicon(
     "name", "default",
     "manveuvers", queue(
         CountDown(5),
-        Hover(250)
+        Hover(50)
     )
 ).
