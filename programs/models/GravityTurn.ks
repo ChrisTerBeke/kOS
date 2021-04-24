@@ -1,3 +1,4 @@
+runOncePath("programs/helpers/CalculateDirection").  // #include "../helpers/CalculateDirection.ks"
 runOncePath("programs/helpers/CalculateHeading").  // #include "../helpers/CalculateHeading.ks"
 runOncePath("programs/helpers/CheckEngineFlameOut").  // #include "../helpers/CheckEngineFlameOut.ks"
 runOncePath("programs/helpers/DebugLog").  // #include "../helpers/DebugLog.ks"
@@ -9,9 +10,8 @@ function GravityTurn {
     parameter gravity_turn_start_altitude.
     parameter target_altitude.
     parameter target_inclination.
+    parameter launch_azimuth.
 
-    local launch_location is ship:geoPosition.
-    local launch_azimuth is calculateLaunchAzimuth(target_altitude, target_inclination, launch_location).
     local turn_end_pitch_degrees is 10.
     local turn_end_altitude is 0.
     local turn_exponent is 0.
@@ -23,6 +23,7 @@ function GravityTurn {
     local staging_in_progress is false.
     local stage_at_time is time:seconds.
     local stage_separation_delay is 2.
+    local fairings_separated is false.
 
     function isComplete {
         return turn_finished.
@@ -56,17 +57,16 @@ function GravityTurn {
             return.
         }
 
-        // calculate pitch
-        local steer_to_pitch is max(90 - (((altitude - gravity_turn_start_altitude) / (turn_end_altitude - gravity_turn_start_altitude)) ^ turn_exponent * 90), turn_end_pitch_degrees).
-    
-        // calculate heading
-        if abs(ship:orbit:inclination - abs(target_inclination)) > 2 {
-            set steer_to_direction to launch_azimuth.
-        } else if target_inclination >= 0 and vAng(vxcl(ship:up:vector, ship:facing:vector), ship:north:vector) <= 90{
-            set steer_to_direction to (90 - target_inclination) - 2 * (abs(target_inclination) - ship:orbit:inclination).
-        } else {
-            set steer_to_direction to (90 - target_inclination) + 2 * (abs(target_inclination) - ship:orbit:inclination).
+        // separate fairings when almost out of atmosphere
+        if ship:altitude > (0.95 * ship:body:atm:height) and not fairings_separated {
+            deployFairings().
+            set fairings_separated to true.
+            debugLog("Fairing separation").
         }
+
+        // calculate heading
+        local steer_to_pitch is max(90 - (((altitude - gravity_turn_start_altitude) / (turn_end_altitude - gravity_turn_start_altitude)) ^ turn_exponent * 90), turn_end_pitch_degrees).
+        local steer_to_direction is calculateDirection(target_inclination, launch_azimuth).
         local tmp_heading is calculateHeading(steer_to_direction, steer_to_pitch, roll).
 
         // limit angle of attack depending on aerodynamic pressure

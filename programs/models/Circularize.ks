@@ -9,7 +9,8 @@ function Circularize {
 
     local burn_started is false.
     local burn_finished is false.
-    local fairings_separated is false.
+    // TODO: detect if fairings were already separated during gravity turn
+    local fairings_separated_coast is false.
     local throttle_to is 0.
 
     function isComplete {
@@ -40,8 +41,9 @@ function Circularize {
         }
 
         // separate fairings when almost out of atmosphere
-        if ship:altitude > (0.95 * ship:body:atm:height) and not fairings_separated {
+        if ship:altitude > (0.95 * ship:body:atm:height) and not fairings_separated_coast {
             deployFairings().
+            set fairings_separated_coast to true.
             debugLog("Fairing separation").
         }
     }
