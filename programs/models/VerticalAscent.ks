@@ -6,6 +6,8 @@ function VerticalAscent {
     parameter roll.
     parameter roll_start_altitude.
     parameter gravity_turn_start_altitude.
+    parameter target_inclination.
+    parameter launch_azimuth.
 
     local start_gravity_turn is false.
     local throttle_to is 1.
@@ -17,8 +19,8 @@ function VerticalAscent {
 
     function update {
         if altitude > roll_start_altitude {
-            // todo: take target inclination into account when rolling
-            set steer_to to calculateHeading(90, 90, roll).
+            local steer_to_direction is calculateDirection(target_inclination, launch_azimuth).
+            set steer_to to calculateHeading(steer_to_direction, 90, roll).
         }
         if altitude > gravity_turn_start_altitude {
             set start_gravity_turn to true.
