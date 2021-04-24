@@ -1,6 +1,7 @@
 runOncePath("programs/helpers/CalculateDeltaV").  // #include "../helpers/CalculateDeltaV.ks"
 runOncePath("programs/helpers/CalculateRemainingBurnTime").  // #include "../helpers/CalculateRemainingBurnTime.ks"
 runOncePath("programs/helpers/DebugLog").  // #include "../helpers/DebugLog.ks"
+runOncePath("programs/helpers/DeployFairings").  // #include "../helpers/DeployFairings.ks"
 
 function Circularize {
 
@@ -38,11 +39,9 @@ function Circularize {
             debugLog("Finished circularization burn").
         }
 
-        // separate fairings when out of atmosphere
-        // TODO: do not use a stage for this
-        if ship:altitude > ship:body:atm:height and not fairings_separated {
-            stage.
-            set fairings_separated to true.
+        // separate fairings when almost out of atmosphere
+        if ship:altitude > (0.95 * ship:body:atm:height) and not fairings_separated {
+            deployFairings().
             debugLog("Fairing separation").
         }
     }
