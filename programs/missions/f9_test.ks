@@ -3,7 +3,7 @@ runOncePath("programs/models/Launch").  // #include "../models/Launch.ks"
 
 global MISSION_CONFIG is lexicon(
     "name", "f9_test",
-    "manveuvers", queue(
+    "maneuvers", queue(
         Launch(120000, 51.2, 0),
         Hohmann(140000)
     )

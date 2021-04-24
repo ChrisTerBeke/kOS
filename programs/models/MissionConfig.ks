@@ -16,7 +16,7 @@ function MissionConfig {
     }
 
     function getManeuvers {
-        return MISSION_CONFIG["manveuvers"].
+        return MISSION_CONFIG["maneuvers"].
     }
 
     return lexicon(
