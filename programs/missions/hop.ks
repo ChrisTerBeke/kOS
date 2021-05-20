@@ -1,10 +1,8 @@
-runOncePath("programs/models/CountDown").  // #include "../models/CountDown.ks"
-runOncePath("programs/models/Hover").  // #include "../models/Hover.ks"
+runOncePath("programs/models/starship/Hop").  // #include "../models/starship/Hop.ks"
 
 global MISSION_CONFIG is lexicon(
     "name", "default",
-    "manveuvers", queue(
-        CountDown(5),
-        Hover(50)
+    "maneuvers", queue(
+        Hop(2000)
     )
 ).

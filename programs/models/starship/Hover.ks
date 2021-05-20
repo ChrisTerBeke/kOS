@@ -1,5 +1,5 @@
-runOncePath("programs/helpers/CalculateUpDirection").  // #include "../helpers/CalculateUpDirection.ks"
-runOncePath("programs/helpers/GetThrustForStage").  // #include "../helpers/GetThrustForStage.ks"
+runOncePath("programs/helpers/CalculateUpDirection").  // #include "../../helpers/CalculateUpDirection.ks"
+runOncePath("programs/helpers/GetThrustForStage").  // #include "../../helpers/GetThrustForStage.ks"
 
 function Hover {
 
