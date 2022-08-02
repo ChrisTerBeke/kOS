@@ -1,0 +1,19 @@
+{
+    "name": "f9_test",
+    "maneuvers": [
+        {
+            "type": "Launch",
+            "parameters": {
+                "target_altitude": 120000,
+                "target_inclination": 25,
+                "roll": 0
+            }
+        },
+        {
+            "type": "Hohmann",
+            "parameters": {
+                "target_altitude": 140000
+            }
+        }
+    ]
+}
