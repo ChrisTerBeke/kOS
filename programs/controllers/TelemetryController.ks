@@ -12,6 +12,7 @@ function TelemetryController {
     local file_name is "logs/telemetry/" + mission_name + "/" + time:seconds + ".csv".
     archive_volume:create(file_name).
     local telemetry_downlink is archive_volume:open(file_name).
+    local telemetry_downlink_write_header is true.
 
     function update {
         if not is_enabled {
@@ -52,6 +53,14 @@ function TelemetryController {
     }
 
     function _logTelemetry {
+
+        // CSV header
+        if telemetry_downlink_write_header = true {
+            local telemetry_header is telemetry:keys:join(",").
+            telemetry_downlink:writeln(telemetry_header).
+            set telemetry_downlink_write_header to false.
+        }
+
         local telemetry_line is telemetry:values:join(",").
         telemetry_downlink:writeln(telemetry_line).
     }
