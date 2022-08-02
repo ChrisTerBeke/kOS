@@ -1,6 +1,6 @@
 runOncePath("programs/helpers/CalculateSpecificImpulse").  // #include "./CalculateSpecificImpulse.ks"
 
-// calculate the remaining time in seconds to reach the desired circular orbit
+// calculate the remaining time in seconds to reach the desired eliptical orbit
 function calculateRemainingBurnTime {
     parameter delta_v.
     local specific_impulse is calculateSpecificImpulse().

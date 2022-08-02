@@ -1,4 +1,4 @@
-// calculate the required speed for circular orbit at the given altitude
+// calculate the required speed for an eliptical orbit at the given altitude using the Vis-viva equation
 function calculateOrbitalSpeed {
     parameter input_altitude is altitude.
     parameter input_apoapsis is apoapsis.

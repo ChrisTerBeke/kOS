@@ -1,4 +1,5 @@
 // boot script
+wait until ship:unpacked.
 set script_path to "0:/start.ks".
 if exists(script_path) {
     copypath(script_path, "start.ks").
