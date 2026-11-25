@@ -40,7 +40,7 @@ function OrbitChange {
 
 		if burn_started and burn_time_remaining < 0.05 {
             set throttle_to to 0.
-            set burn_started to false.
+            set burn_finished to true.
         }
 	}
 
@@ -52,10 +52,15 @@ function OrbitChange {
 		return throttle_to.
 	}
 
+	function getName {
+		return "Orbit change".
+	}
+
 	return lexicon(
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
 	).
 }

@@ -8,10 +8,8 @@ function TelemetryController {
 
     // TODO: queue telemetry locally and copy to archive periodically to simulate data downlink
     local archive_volume is volume(0).
-    switch to archive_volume.
-    local file_name is "logs/telemetry/" + mission_name + "/" + time:seconds + ".csv".
-    archive_volume:create(file_name).
-    local telemetry_downlink is archive_volume:open(file_name).
+    local telemetry_downlink is 0.
+    local telemetry_downlink_ready is false.
     local telemetry_downlink_write_header is true.
 
     function update {
@@ -35,6 +33,16 @@ function TelemetryController {
 		set telemetry to telemetry_lex.
 	}
 
+    function _ensureDownlink {
+        if telemetry_downlink_ready {
+            return.
+        }
+        local file_name is "logs/telemetry/" + mission_name + "/" + time:seconds + ".csv".
+        archive_volume:create(file_name).
+        set telemetry_downlink to archive_volume:open(file_name).
+        set telemetry_downlink_ready to true.
+    }
+
     function _printTelemetry {
         local telemetry_iterator is telemetry:keys:iterator.
         until not telemetry_iterator:next {
@@ -53,9 +61,14 @@ function TelemetryController {
     }
 
     function _logTelemetry {
+        if telemetry:length = 0 {
+            return.
+        }
+
+        _ensureDownlink().
 
         // CSV header
-        if telemetry_downlink_write_header = true {
+        if telemetry_downlink_write_header {
             local telemetry_header is telemetry:keys:join(",").
             telemetry_downlink:writeln(telemetry_header).
             set telemetry_downlink_write_header to false.

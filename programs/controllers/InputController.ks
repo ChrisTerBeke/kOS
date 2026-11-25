@@ -9,6 +9,9 @@ function InputController {
     }
 
     function enterPressed {
+        if not is_enabled {
+            return false.
+        }
         if terminal:input:haschar {
             local input is terminal:input:getchar().
             if input = terminal:input:enter {

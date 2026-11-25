@@ -2,6 +2,7 @@ runOncePath("programs/helpers/CalculateDirection").  // #include "../helpers/Cal
 runOncePath("programs/helpers/CalculateHeading").  // #include "../helpers/CalculateHeading.ks"
 runOncePath("programs/helpers/CheckEngineFlameOut").  // #include "../helpers/CheckEngineFlameOut.ks"
 runOncePath("programs/helpers/DebugLog").  // #include "../helpers/DebugLog.ks"
+runOncePath("programs/helpers/DeployFairings").  // #include "../helpers/DeployFairings.ks"
 runOncePath("programs/helpers/GetThrustForStage").  // #include "../helpers/GetThrustForStage.ks"
 
 function GravityTurn {
@@ -71,14 +72,13 @@ function GravityTurn {
 
         // limit angle of attack depending on aerodynamic pressure
         // TODO: throttle down at max Q
+        local angle_limit is 90.
         if ship:q > 0 {
             set angle_limit to max(3, min(90, 5 * ln(0.9 / ship:q))).
-        } else {
-            set angle_limit to 90.
         }
 
         // adjust heading depending on AoA limit
-        set angle_to_prograde to vAng(ship:srfprograde:vector, tmp_heading:vector).
+        local angle_to_prograde is vAng(ship:srfprograde:vector, tmp_heading:vector).
         if angle_to_prograde > angle_limit {
             local ascent_heading_limited to (angle_limit / angle_to_prograde * (tmp_heading:vector:normalized - ship:srfPrograde:vector:normalized)) + ship:srfprograde:vector:normalized.
             set tmp_heading to ascent_heading_limited:direction.

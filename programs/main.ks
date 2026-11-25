@@ -18,6 +18,9 @@ local steering_controller is SteeringController().
 local telemetry_controller is TelemetryController(mission:getName()).
 local throttle_controller is ThrottleController().
 
+// accept Enter to start the mission while idle
+input_controller:setEnabled(true).
+
 // program modes
 global PROGRAM_MODE_IDLE is 0.
 global PROGRAM_MODE_ACTIVE is 1.
@@ -76,6 +79,7 @@ until program_finished {
     sequence_controller:update().
 	steering_controller:update().
     telemetry_controller:update().
+    throttle_controller:update().
 
     // prevent KSP from locking up
     wait 0.2.

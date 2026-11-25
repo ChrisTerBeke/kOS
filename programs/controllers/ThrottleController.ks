@@ -30,7 +30,7 @@ function ThrottleController {
     }
 
 	function doAbort {
-		set is_enabled to false.
+		setEnabled(false).
 	}
 
     return lexicon(

@@ -1,5 +1,8 @@
 // calculate the specific impulse for all active engines combined
 function calculateSpecificImpulse {
+    if ship:availableThrust = 0 {
+        return 0.
+    }
     local specific_impulse is 0.
     list engines in engine_list.
     for engine in engine_list {
