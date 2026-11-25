@@ -1,3 +1,4 @@
+runOncePath("programs/helpers/CalculateDirection").  // #include "../helpers/CalculateDirection.ks"
 runOncePath("programs/helpers/CalculateHeading").  // #include "../helpers/CalculateHeading.ks"
 runOncePath("programs/helpers/CalculateUpDirection").  // #include "../helpers/CalculateUpDirection.ks"
 

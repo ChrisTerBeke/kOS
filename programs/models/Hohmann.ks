@@ -1,4 +1,5 @@
 runOncePath("programs/models/OrbitChange"). // #include "./OrbitChange.ks"
+runOncePath("programs/models/WaitUntil"). // #include "./WaitUntil.ks"
 
 function Hohmann {
 
@@ -10,6 +11,7 @@ function Hohmann {
 	).
 	local active_maneuver is WaitUntil(time).
     local throttle_to is 0.
+    local steer_to is ship:prograde.
 
     function isComplete {
 		return active_maneuver:isComplete() and maneuvers:length = 0.
@@ -23,7 +25,7 @@ function Hohmann {
     }
 
     function getDirection {
-        return ship:prograde.
+        return steer_to.
     }
 
     function getThrottle {
@@ -31,12 +33,13 @@ function Hohmann {
     }
 
     function getName {
-        return "Hohmann".
+        return "Hohmann - " + active_maneuver:getName().
     }
 
 	function _executeActiveManeuver {
 		active_maneuver:update().
         set throttle_to to active_maneuver:getThrottle().
+        set steer_to to active_maneuver:getDirection().
 	}
 
     return lexicon(
