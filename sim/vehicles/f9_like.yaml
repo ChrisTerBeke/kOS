@@ -1,0 +1,44 @@
+name: f9_like
+launch:
+  latitude_deg: -0.0972
+  longitude_deg: -74.5577
+  altitude_m: 71.0
+drag:
+  reference_area_m2: 12.0
+  cd: 0.3
+attitude:
+  max_rate_deg_s: 15.0
+  lag_gain: 2.0
+stages:
+  # Liftoff stack (main engines). Clamps hold until released.
+  - name: first
+    dry_mass_kg: 22000
+    fuel_mass_kg: 380000
+    engines:
+      - name: merlin_cluster
+        thrust_asl_n: 7600000
+        thrust_vac_n: 8227000
+        isp_asl: 282
+        isp_vac: 311
+    modules:
+      - type: LaunchClamp
+        name: clamp_a
+      - type: LaunchClamp
+        name: clamp_b
+      - type: LaunchClamp
+        name: clamp_c
+      - type: LaunchClamp
+        name: clamp_d
+  # Upper stage after staging
+  - name: second
+    dry_mass_kg: 4000
+    fuel_mass_kg: 92000
+    engines:
+      - name: merlin_vac
+        thrust_asl_n: 800000
+        thrust_vac_n: 934000
+        isp_asl: 290
+        isp_vac: 348
+    modules:
+      - type: ModuleProceduralFairing
+        name: fairing

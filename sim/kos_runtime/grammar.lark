@@ -1,0 +1,103 @@
+start: statement*
+
+?statement: run_stmt
+          | function_def
+          | declare_stmt
+          | set_stmt
+          | if_stmt
+          | until_stmt
+          | for_stmt
+          | return_stmt
+          | lock_stmt
+          | unlock_stmt
+          | on_stmt
+          | wait_stmt
+          | stage_stmt
+          | rcs_stmt
+          | sas_stmt
+          | abort_stmt
+          | print_stmt
+          | clearscreen_stmt
+          | switch_stmt
+          | list_stmt
+          | expr_stmt
+          | block
+
+block: "{" statement* "}"
+
+function_def: "function" NAME parameter_list? block
+parameter_list: "(" [NAME ("," NAME)*] ")"
+declare_stmt: ("local"|"global") NAME ("is"|",") expr "."?
+set_stmt: "set" assignable "to" expr "."?
+if_stmt: "if" expr block ("else" (if_stmt | block))?
+until_stmt: "until" expr block
+for_stmt: "for" NAME "in" expr block
+return_stmt: "return" expr? "."?
+lock_stmt: "lock" NAME "to" expr "."?
+unlock_stmt: "unlock" NAME "."?
+on_stmt: "on" expr block
+wait_stmt: "wait" ("until" expr | expr) "."?
+stage_stmt: "stage" "."?
+rcs_stmt: "rcs" ("on"|"off") "."?
+sas_stmt: "sas" ("on"|"off") "."?
+abort_stmt: "abort" ("on"|"off") "."?
+print_stmt: "print" expr ("at" "(" expr "," expr ")")? "."?
+clearscreen_stmt: "clearScreen" "."? | "clearscreen" "."?
+switch_stmt: "switch" "to" expr "."?
+list_stmt: "list" NAME "in" NAME "."?
+run_stmt: run_kind "(" expr ("," expr)* ")" "."?
+run_kind: "runOncePath" | "runPath" | "run"
+expr_stmt: expr "."?
+
+?assignable: suffix_expr
+
+?expr: or_expr
+
+?or_expr: and_expr ("or" and_expr)*
+?and_expr: not_expr ("and" not_expr)*
+?not_expr: "not" not_expr | compare
+?compare: sum (("="|"<>"|">="|"<="|">"|"<") sum)*
+?sum: product (("+"|"-") product)*
+?product: power (("*"|"/") power)*
+?power: unary ("^" unary)*
+?unary: ("+"|"-") unary | suffix_expr
+
+?suffix_expr: primary (suffix)*
+suffix: ":" NAME (call_args)?
+      | "@"
+
+?primary: NUMBER
+        | STRING
+        | TRUE
+        | FALSE
+        | lexicon
+        | list_lit
+        | queue_lit
+        | call
+        | NAME
+        | "(" expr ")"
+        | bracket_index
+
+bracket_index: suffix_expr "[" expr "]"
+
+call: NAME call_args
+call_args: "(" [expr ("," expr)*] ")"
+
+lexicon: "lexicon" "(" [lex_pair ("," lex_pair)*] ")"
+lex_pair: expr "," expr
+
+list_lit: "list" "(" [expr ("," expr)*] ")"
+queue_lit: "queue" "(" [expr ("," expr)*] ")"
+
+TRUE: /true/i
+FALSE: /false/i
+NAME: /[A-Za-z_][A-Za-z0-9_]*/
+STRING: /"[^"]*"/
+NUMBER: /\d+(\.\d+)?([eE][+-]?\d+)?/
+
+COMMENT: "//" /[^\n]*/
+HASHINCLUDE: /\/\/\s*#include[^\n]*/
+%ignore COMMENT
+%ignore HASHINCLUDE
+%ignore /[ \t\f\r\n]+/
+%ignore /\\/

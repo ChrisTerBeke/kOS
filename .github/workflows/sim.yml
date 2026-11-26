@@ -1,0 +1,40 @@
+name: kos-sim
+
+on:
+  push:
+    paths:
+      - "sim/**"
+      - "programs/**"
+      - "boot/**"
+      - "start.ks"
+      - ".github/workflows/sim.yml"
+  pull_request:
+    paths:
+      - "sim/**"
+      - "programs/**"
+      - "boot/**"
+      - "start.ks"
+      - ".github/workflows/sim.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sim
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Pytest
+        run: pytest -q
+      - name: Upload failure snapshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kos-sim-work
+          path: sim/.work
+          if-no-files-found: ignore
