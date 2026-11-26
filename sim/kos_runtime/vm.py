@@ -446,7 +446,12 @@ class VirtualMachine:
             return float(left) / float(right)
 
         if op == "^":
-            return float(left) ** float(right)
+            # KerboScript power — keep results real (frac power of negatives → |x|^y)
+            base = float(left)
+            exp = float(right)
+            if base < 0 and abs(exp - round(exp)) > 1e-12:
+                return -(abs(base) ** exp)
+            return base ** exp
 
         raise NotImplementedError(f"binary op {op}")
 

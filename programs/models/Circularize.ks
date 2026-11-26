@@ -21,8 +21,14 @@ function Circularize {
         local burn_delta_v is calculateDeltaV(target_altitude).
         local burn_time_remaining is calculateRemainingBurnTime(burn_delta_v).
 
-        // full throttle 50% before and 50% after apoapsis for max efficiency
-        if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
+        // Full throttle around apoapsis. Minimum 2s window so short burns are
+        // not skipped between main-loop waits; also catch just-past-apo wrap.
+        local half_burn is max(burn_time_remaining / 2, 2).
+        local near_apo is eta:apoapsis <= half_burn.
+        if ship:orbit:period > 0 and eta:apoapsis >= (ship:orbit:period - half_burn) {
+            set near_apo to true.
+        }
+        if near_apo and not burn_started {
             set throttle_to to 1.
             set burn_started to true.
             debugLog("Starting circularization burn").

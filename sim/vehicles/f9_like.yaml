@@ -4,13 +4,12 @@ launch:
   longitude_deg: -74.5577
   altitude_m: 71.0
 drag:
-  reference_area_m2: 12.0
-  cd: 0.3
+  reference_area_m2: 10.0
+  cd: 0.25
 attitude:
-  max_rate_deg_s: 15.0
-  lag_gain: 2.0
+  max_rate_deg_s: 20.0
+  lag_gain: 3.0
 stages:
-  # Liftoff stack (main engines). Clamps hold until released.
   - name: first
     dry_mass_kg: 22000
     fuel_mass_kg: 380000
@@ -29,10 +28,9 @@ stages:
         name: clamp_c
       - type: LaunchClamp
         name: clamp_d
-  # Upper stage after staging
   - name: second
     dry_mass_kg: 4000
-    fuel_mass_kg: 92000
+    fuel_mass_kg: 110000
     engines:
       - name: merlin_vac
         thrust_asl_n: 800000

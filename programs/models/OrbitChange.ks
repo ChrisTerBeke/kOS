@@ -26,8 +26,14 @@ function OrbitChange {
 			return.
 		}
 
-        // start burning at 50% of our total burn time before apoapsis for highest precision
-		if eta:apoapsis <= (burn_time_remaining / 2) and not burn_started {
+        // Start at apoapsis. Window is at least 2s so a 5Hz main loop cannot
+        // miss short burns; also catch just-past-apo eta wrap.
+        local half_burn is max(burn_time_remaining / 2, 2).
+        local near_apo is eta:apoapsis <= half_burn.
+        if ship:orbit:period > 0 and eta:apoapsis >= (ship:orbit:period - half_burn) {
+            set near_apo to true.
+        }
+		if near_apo and not burn_started {
 			set throttle_to to 1.
             set burn_started to true.
 		}
@@ -40,7 +46,7 @@ function OrbitChange {
 
 		if burn_started and burn_time_remaining < 0.05 {
             set throttle_to to 0.
-            set burn_started to false.
+            set burn_finished to true.
         }
 	}
 
@@ -52,10 +58,15 @@ function OrbitChange {
 		return throttle_to.
 	}
 
+	function getName {
+		return "Orbit change".
+	}
+
 	return lexicon(
         "isComplete", isComplete@,
         "update", update@,
         "getDirection", getDirection@,
-        "getThrottle", getThrottle@
+        "getThrottle", getThrottle@,
+        "getName", getName@
 	).
 }

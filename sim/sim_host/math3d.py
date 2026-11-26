@@ -50,14 +50,39 @@ class Vec3:
         return math.degrees(math.acos(c))
 
 
-def heading_direction(degrees_from_north: float, pitch_deg: float) -> Vec3:
-    """Return unit vector: 0 deg = north (+y), 90 = east (+x), pitch 90 = up (+z)."""
+def local_basis(position: Vec3) -> tuple[Vec3, Vec3, Vec3]:
+    """Return (east, north, up) orthonormal basis at body-centered position."""
+    up = position.normalized()
+    world_north = Vec3(0.0, 0.0, 1.0)
+    east = world_north.cross(up)
+    if east.mag() < 1e-9:
+        # Near pole — pick an arbitrary east
+        east = Vec3(0.0, 1.0, 0.0).cross(up)
+    east = east.normalized()
+    north = up.cross(east).normalized()
+    return east, north, up
+
+
+def heading_direction(
+    degrees_from_north: float,
+    pitch_deg: float,
+    position: Vec3 | None = None,
+) -> Vec3:
+    """Unit look vector: 0°=north, 90°=east, pitch 90°=up.
+
+    If ``position`` is given, express the result in the body-centered frame
+    using the local ENU basis at that point. Otherwise use absolute ENU
+    (z-up) for unit tests.
+    """
     heading = math.radians(degrees_from_north)
     pitch = math.radians(pitch_deg)
-    # Local ENU-ish: x east, y north, z up
     horizontal = math.cos(pitch)
-    return Vec3(
-        horizontal * math.sin(heading),
-        horizontal * math.cos(heading),
-        math.sin(pitch),
-    ).normalized()
+    local = Vec3(
+        horizontal * math.sin(heading),  # east component
+        horizontal * math.cos(heading),  # north component
+        math.sin(pitch),  # up component
+    )
+    if position is None:
+        return local.normalized()
+    east, north, up = local_basis(position)
+    return (east * local.x + north * local.y + up * local.z).normalized()

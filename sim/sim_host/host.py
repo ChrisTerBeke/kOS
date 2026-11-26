@@ -42,6 +42,7 @@ class OrbitProxy:
     eccentricity: float
     inclination: float
     semimajoraxis: float
+    period: float = 0.0
 
 
 @dataclass
@@ -166,14 +167,16 @@ class ShipProxy:
     @property
     def groundspeed(self) -> float:
         up = self._host.physics.state.position.normalized()
-        v = self._host.physics.state.velocity
+        v = self._host.physics.surface_velocity()
         return (v - up * v.dot(up)).mag()
 
     @property
     def q(self) -> float:
+        # kOS SHIP:Q is dynamic pressure in atmospheres (not Pascals).
         density = self._host.body.atm_density(self.altitude)
         speed = self._host.physics.state.velocity.mag()
-        return 0.5 * density * speed * speed
+        q_pa = 0.5 * density * speed * speed
+        return q_pa / 101325.0
 
     @property
     def body(self) -> Kerbin:
@@ -182,7 +185,14 @@ class ShipProxy:
     @property
     def orbit(self) -> OrbitProxy:
         o = self._host.physics.orbit()
-        return OrbitProxy(o.apoapsis, o.periapsis, o.eccentricity, o.inclination, o.semimajoraxis)
+        return OrbitProxy(
+            o.apoapsis,
+            o.periapsis,
+            o.eccentricity,
+            o.inclination,
+            o.semimajoraxis,
+            o.period,
+        )
 
     @property
     def geoposition(self) -> GeoCoordinates:
@@ -198,11 +208,17 @@ class ShipProxy:
 
     @property
     def prograde(self) -> Direction:
-        return Direction(vector=self._host.physics.state.velocity.normalized())
+        v = self._host.physics.state.velocity
+        if v.mag() <= 1e-6:
+            return Direction(vector=self._host.physics.state.position.normalized())
+        return Direction(vector=v.normalized())
 
     @property
     def srfprograde(self) -> Direction:
-        return self.prograde
+        v = self._host.physics.surface_velocity()
+        if v.mag() <= 1e-6:
+            return Direction(vector=self._host.physics.state.position.normalized())
+        return Direction(vector=v.normalized())
 
     @property
     def srfPrograde(self) -> Direction:  # noqa: N802
@@ -214,7 +230,10 @@ class ShipProxy:
 
     @property
     def north(self) -> Direction:
-        return Direction(vector=Vec3(0.0, 1.0, 0.0))
+        from sim_host.math3d import local_basis
+
+        _east, north, _up = local_basis(self._host.physics.state.position)
+        return Direction(vector=north)
 
     @property
     def deltav(self) -> Any:
@@ -282,6 +301,7 @@ class SimHost:
         archive_root: Path,
         body: Kerbin | None = None,
         work_root: Path | None = None,
+        quiet: bool = False,
     ) -> None:
         self.body = body or Kerbin()
         self.vehicle = vehicle
@@ -304,6 +324,15 @@ class SimHost:
         self._terminal: list[str] = []
         self._ship = ShipProxy(self)
         self.invariant_log: list[str] = []
+        self.quiet = quiet
+
+    def print(self, *args: Any, **kwargs: Any) -> None:  # noqa: A003
+        if not self.quiet:
+            print(*args, **kwargs)
+
+    def hudtext(self, text: Any, *args: Any, **kwargs: Any) -> None:
+        if not self.quiet:
+            print(f"[hudtext] {text}")
 
     @classmethod
     def from_vehicle_yaml(
@@ -311,9 +340,15 @@ class SimHost:
         vehicle_path: Path,
         archive_root: Path,
         work_root: Path | None = None,
+        quiet: bool = False,
     ) -> SimHost:
         vehicle = Vehicle.from_yaml(vehicle_path)
-        return cls(vehicle=vehicle, archive_root=archive_root, work_root=work_root)
+        return cls(
+            vehicle=vehicle,
+            archive_root=archive_root,
+            work_root=work_root,
+            quiet=quiet,
+        )
 
     @property
     def ship(self) -> ShipProxy:
@@ -348,12 +383,18 @@ class SimHost:
             raise SimFault(f"physics fault: {violations}")
 
     def _apply_steering(self, steering: Any) -> None:
+        vec = None
         if isinstance(steering, Direction):
-            self.physics.set_steering_target(steering.vector)
+            vec = steering.vector
         elif isinstance(steering, Vec3):
-            self.physics.set_steering_target(steering)
+            vec = steering
         elif hasattr(steering, "vector"):
-            self.physics.set_steering_target(steering.vector)
+            vec = steering.vector
+        elif hasattr(steering, "x") and hasattr(steering, "y") and hasattr(steering, "z"):
+            vec = steering
+        if vec is None:
+            return
+        self.physics.set_steering_target(Vec3(float(vec.x), float(vec.y), float(vec.z)))
 
     def set_throttle_lock(self, expression: Any | None) -> None:
         self._throttle_lock = expression
@@ -468,7 +509,8 @@ class SimHost:
             self.vehicle.fairing_deploy_count += 1
 
     def heading(self, dir_deg: float, pitch_deg: float) -> Direction:
-        return Direction(vector=heading_direction(dir_deg, pitch_deg), pitch=pitch_deg, yaw=dir_deg)
+        vec = heading_direction(dir_deg, pitch_deg, position=self.physics.state.position)
+        return Direction(vector=vec, pitch=pitch_deg, yaw=dir_deg)
 
     def snapshot(self) -> dict[str, Any]:
         o = self.physics.orbit()

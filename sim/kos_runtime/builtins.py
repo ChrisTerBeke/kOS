@@ -156,7 +156,7 @@ def install_builtins(env: Environment, host: Any) -> None:
         "arctan2": _arctan2,
         "abs": abs,
         "sqrt": math.sqrt,
-        "ln": math.log,
+        "ln": lambda x: math.log(max(float(x), 1e-300)),
         "log10": math.log10,
         "min": min,
         "max": max,

@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from harness.assertions import InvariantLimits, OrbitTolerances, assert_invariants, assert_orbit
+from harness.assertions import assert_invariants, assert_orbit
 from kos_runtime.vm import VirtualMachine
-from sim_host.host import SimHost, SimFault
+from sim_host.host import SimFault, SimHost
 
 
 @dataclass
@@ -23,7 +23,14 @@ def run_mission(
     vehicle_yaml: Path | None = None,
     timeout_sim_s: float = 3600.0,
     inject_enter: bool = True,
+    quiet: bool = True,
 ) -> MissionResult:
+    """Boot archive and run ``start(mission_name)``.
+
+    The VM cooperatively advances simulated time on every ``wait``, so the
+    mission runs inside ``run_path`` until the main loop exits or a fault/timeout
+    occurs.
+    """
     repo_root = repo_root.resolve()
     vehicle_yaml = vehicle_yaml or (repo_root / "sim" / "vehicles" / "f9_like.yaml")
     work = repo_root / "sim" / ".work" / mission_name
@@ -33,31 +40,40 @@ def run_mission(
         shutil.rmtree(work)
     work.mkdir(parents=True, exist_ok=True)
 
-    host = SimHost.from_vehicle_yaml(vehicle_yaml, archive_root=repo_root, work_root=work)
-    # Copy programs onto flight computer volume like start.ks does
+    host = SimHost.from_vehicle_yaml(
+        vehicle_yaml, archive_root=repo_root, work_root=work, quiet=quiet
+    )
     samples: list[dict[str, Any]] = []
     vm = VirtualMachine(host)
+    # Soft wall: stop advancing once host clock exceeds timeout.
+    max_time = host.time_seconds + timeout_sim_s
+    original_advance = host.advance
+
+    def guarded_advance(dt: float) -> None:
+        if host.time_seconds >= max_time:
+            raise TimeoutError(f"sim timeout at t={host.time_seconds:.1f}s")
+        original_advance(dt)
+        if int(host.time_seconds) % 30 == 0:
+            snap = host.snapshot()
+            if not samples or samples[-1].get("time") != snap.get("time"):
+                samples.append(snap)
+
+    host.advance = guarded_advance  # type: ignore[method-assign]
 
     try:
         if host.path_exists("0:/boot/boot.ks"):
             vm.run_path("0:/boot/boot.ks")
         if inject_enter:
-            # Enter key once mission is waiting for input
+            # kOS Enter — InputController compares against terminal:input:enter
+            host.push_terminal_char("\r")
             host.push_terminal_char("\n")
         vm.run_path("0:/start.ks", args=[mission_name])
-        # If start returns immediately after scheduling, drive until idle
-        # Main loop uses wait 0.2 — VM should block cooperatively until finished.
-        elapsed = 0.0
-        while elapsed < timeout_sim_s and not vm.is_finished:
-            host.advance(0.2)
-            elapsed += 0.2
-            if int(elapsed) % 10 == 0:
-                samples.append(host.snapshot())
         snap = host.snapshot()
         samples.append(snap)
-        return MissionResult(completed=vm.is_finished, snapshot=snap, samples=samples)
-    except (SimFault, NotImplementedError, RuntimeError) as exc:
+        return MissionResult(completed=True, snapshot=snap, samples=samples)
+    except (SimFault, NotImplementedError, RuntimeError, TimeoutError) as exc:
         snap = host.snapshot()
+        samples.append(snap)
         return MissionResult(completed=False, snapshot=snap, error=str(exc), samples=samples)
 
 

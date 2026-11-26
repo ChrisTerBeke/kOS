@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 
 from sim_host.kerbin import Kerbin
-from sim_host.math3d import Vec3, heading_direction
+from sim_host.math3d import Vec3, heading_direction, local_basis
 from sim_host.vehicle import Vehicle
 
 G0 = 9.80665
@@ -19,6 +19,7 @@ class OrbitElements:
     semimajoraxis: float
     eta_apoapsis: float
     eta_periapsis: float
+    period: float
 
 
 def orbital_elements(r: Vec3, v: Vec3, body: Kerbin) -> OrbitElements:
@@ -47,27 +48,26 @@ def orbital_elements(r: Vec3, v: Vec3, body: Kerbin) -> OrbitElements:
     # Approximate ETAs using period and true anomaly proxy
     if math.isfinite(sma) and sma > 0 and ecc < 1.0:
         period = 2.0 * math.pi * math.sqrt(sma**3 / mu)
-        # radial velocity sign for anomaly progress
         vr = v.dot(r.normalized())
-        # crude: fraction of period from periapsis using radius
         if apo_r > peri_r and ecc > 1e-8:
             cos_nu = max(-1.0, min(1.0, ((sma * (1 - ecc * ecc) / r_mag) - 1.0) / ecc))
             nu = math.acos(cos_nu)
             if vr < 0:
                 nu = 2 * math.pi - nu
-            # mean anomaly approximation
-            ea = 2 * math.atan(math.sqrt((1 - ecc) / (1 + ecc)) * math.tan(nu / 2))
+            ea = 2 * math.atan(
+                math.sqrt((1 - ecc) / (1 + ecc + 1e-15)) * math.tan(nu / 2.0)
+            )
             ma = ea - ecc * math.sin(ea)
             if ma < 0:
                 ma += 2 * math.pi
-            eta_pe = (2 * math.pi - ma) / (2 * math.pi) * period
-            eta_ap = (math.pi - ma) / (2 * math.pi) * period
-            if eta_ap < 0:
-                eta_ap += period
+            eta_pe = ((2 * math.pi - ma) % (2 * math.pi)) / (2 * math.pi) * period
+            eta_ap = ((math.pi - ma) % (2 * math.pi)) / (2 * math.pi) * period
         else:
+            # Near-circular: treat "apo" as half-period ahead from an arbitrary clock
             eta_ap = period / 2.0
             eta_pe = period
     else:
+        period = float("inf")
         eta_ap = float("inf")
         eta_pe = float("inf")
     return OrbitElements(
@@ -78,6 +78,7 @@ def orbital_elements(r: Vec3, v: Vec3, body: Kerbin) -> OrbitElements:
         semimajoraxis=sma if math.isfinite(sma) else 0.0,
         eta_apoapsis=eta_ap,
         eta_periapsis=eta_pe,
+        period=period,
     )
 
 
@@ -123,6 +124,17 @@ class PhysicsEngine:
     @property
     def altitude(self) -> float:
         return self.state.position.mag() - self.body.radius
+
+    def surface_rotation_velocity(self) -> Vec3:
+        """Eastward velocity of the ground under the ship (inertial frame)."""
+        east, _north, _up = local_basis(self.state.position)
+        # Distance from rotation axis (Kerbin spins about +z)
+        axis_r = math.hypot(self.state.position.x, self.state.position.y)
+        omega = 2.0 * math.pi / self.body.rotation_period
+        return east * (omega * axis_r)
+
+    def surface_velocity(self) -> Vec3:
+        return self.state.velocity - self.surface_rotation_velocity()
 
     def orbit(self) -> OrbitElements:
         return orbital_elements(self.state.position, self.state.velocity, self.body)
@@ -253,7 +265,9 @@ class PhysicsEngine:
         self.state.velocity = new_vel
         self.state.time += dt
 
-        # Surface impact
+        # Surface impact — record fault; do not soft-stick and keep burning
         if self.altitude < 0 and not self.vehicle.clamps_held:
             self.state.position = self.state.position.normalized() * self.body.radius
             self.state.velocity = Vec3(0.0, 0.0, 0.0)
+            self.state.throttle = 0.0
+            self._invariant_violations.append(f"impact altitude={self.altitude}")
