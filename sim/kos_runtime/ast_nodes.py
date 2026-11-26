@@ -207,3 +207,8 @@ class QueueLiteral(Node):
 class Index(Node):
     base: Any = None
     index: Any = None
+
+
+@dataclass
+class BreakStmt(Node):
+    pass
